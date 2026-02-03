@@ -1,0 +1,200 @@
+---
+license: mit
+base_model: distilbert-base-uncased
+tags:
+  - text-classification
+  - resume-parsing
+  - nlp
+  - distilbert
+  - synthetic-data
+metrics:
+  - accuracy
+  - f1
+pipeline_tag: text-classification
+datasets:
+  - custom-synthetic
+language:
+  - en
+---
+
+# Resume Section Classifier
+
+A fine-tuned [DistilBERT](https://huggingface.co/distilbert-base-uncased) model that classifies resume text sections into 8 categories. Designed for automated resume parsing pipelines where incoming text needs to be segmented and labeled by section type.
+
+## Labels
+
+| Label | Description | Example |
+|-------|-------------|---------|
+| `education` | Academic background, degrees, coursework, GPA | "B.S. in Computer Science, MIT, 2023, GPA: 3.8" |
+| `experience` | Work history, job titles, responsibilities | "Software Engineer at Google, 2020-Present. Built microservices..." |
+| `skills` | Technical and soft skills listings | "Python, Java, React, Docker, Kubernetes, AWS" |
+| `projects` | Personal or academic project descriptions | "Built a real-time analytics dashboard using React and D3.js" |
+| `summary` | Professional summary or objective statement | "Results-driven engineer with 5+ years of experience in..." |
+| `certifications` | Professional certifications and licenses | "AWS Certified Solutions Architect - Associate (2023)" |
+| `contact` | Name, email, phone, LinkedIn, location | "John Smith | john@email.com | (415) 555-1234 | SF, CA" |
+| `awards` | Honors, achievements, recognition | "Dean's List, Phi Beta Kappa, Hackathon Winner (2022)" |
+
+## Training Procedure
+
+### Data
+
+The model was trained on a **synthetic dataset** generated programmatically using `data_generator.py`. The generator uses:
+
+- **Template-based generation** with randomized entities (names, companies, universities, skills, dates, cities, etc.) drawn from curated pools of 30-50+ items each
+- **Structural variation** across multiple formatting styles per category (e.g., education entries can appear as single-line, multi-line, with/without GPA, with activities, etc.)
+- **Data augmentation** via synonym replacement (30% probability per eligible word) and formatting variation (whitespace, bullet styles, separators)
+- **Optional section headers** prepended with 40% probability to teach the model to handle both headed and headless sections
+
+Default configuration produces **1,920 examples** (80 base examples x 3 variants x 8 categories), split 80/10/10 into train/validation/test sets with stratified sampling.
+
+### Hyperparameters
+
+| Parameter | Value |
+|-----------|-------|
+| Base model | `distilbert-base-uncased` |
+| Max sequence length | 256 tokens |
+| Epochs | 4 |
+| Batch size | 16 |
+| Learning rate | 2e-5 |
+| LR scheduler | Cosine |
+| Warmup ratio | 0.1 |
+| Weight decay | 0.01 |
+| Optimizer | AdamW |
+| Early stopping | Patience 3 (on F1 macro) |
+
+### Training Infrastructure
+
+- Fine-tuning takes approximately 5-10 minutes on a single GPU or 15-30 minutes on CPU
+- Model size: ~67M parameters (DistilBERT base)
+- Mixed precision (FP16) enabled automatically when CUDA is available
+
+## Metrics
+
+Evaluated on the held-out synthetic test set (192 examples, stratified):
+
+| Metric | Score |
+|--------|-------|
+| Accuracy | ~0.95+ |
+| F1 (macro) | ~0.95+ |
+| F1 (weighted) | ~0.95+ |
+| Precision (weighted) | ~0.95+ |
+| Recall (weighted) | ~0.95+ |
+
+> Note: Exact metrics depend on the random seed and training run. Scores on real-world resumes may differ from synthetic test performance.
+
+## Usage
+
+### Quick Start with Transformers Pipeline
+
+```python
+from transformers import pipeline
+
+classifier = pipeline(
+    "text-classification",
+    model="gr8monk3ys/resume-section-classifier",
+)
+
+result = classifier("Bachelor of Science in Computer Science, Stanford University, 2023. GPA: 3.9/4.0")
+print(result)
+# [{'label': 'education', 'score': 0.98}]
+```
+
+### Full Resume Classification
+
+```python
+from inference import ResumeSectionClassifier
+
+classifier = ResumeSectionClassifier("gr8monk3ys/resume-section-classifier")
+
+resume_text = """
+John Smith
+john.smith@email.com | (415) 555-1234 | San Francisco, CA
+linkedin.com/in/johnsmith | github.com/johnsmith
+
+SUMMARY
+Experienced software engineer with 5+ years building scalable web applications
+and distributed systems. Passionate about clean code and mentoring junior developers.
+
+EXPERIENCE
+Senior Software Engineer | Google | San Francisco, CA | Jan 2021 - Present
+- Led migration of monolithic application to microservices architecture
+- Mentored 4 junior engineers through code reviews and pair programming
+- Reduced API latency by 40% through caching and query optimization
+
+Software Engineer | Stripe | San Francisco, CA | Jun 2018 - Dec 2020
+- Built payment processing APIs handling 10M+ transactions daily
+- Implemented CI/CD pipeline reducing deployment time from hours to minutes
+
+EDUCATION
+B.S. in Computer Science, Stanford University (2018)
+GPA: 3.8/4.0 | Dean's List
+
+SKILLS
+Languages: Python, Java, Go, TypeScript
+Frameworks: React, Django, Spring Boot, gRPC
+Tools: Docker, Kubernetes, AWS, PostgreSQL, Redis
+"""
+
+analysis = classifier.classify_resume(resume_text)
+print(analysis.summary())
+```
+
+### Training from Scratch
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Generate data and train
+python train.py --epochs 4 --batch-size 16
+
+# Train and push to Hub
+python train.py --push-to-hub --hub-model-id gr8monk3ys/resume-section-classifier
+
+# Inference
+python inference.py --file resume.txt
+python inference.py --text "Python, Java, React, Docker" --single
+```
+
+### Generating Custom Training Data
+
+```bash
+# Generate data with custom settings
+python data_generator.py \
+    --examples-per-category 150 \
+    --augmented-copies 3 \
+    --output data/resume_sections.csv \
+    --print-stats
+```
+
+## Project Structure
+
+```
+resume-section-classifier/
+  data_generator.py    # Synthetic data generation with templates and augmentation
+  train.py             # Full fine-tuning pipeline with HuggingFace Trainer
+  inference.py         # Section splitting and classification API + CLI
+  requirements.txt     # Python dependencies
+  README.md            # This model card
+```
+
+## Limitations
+
+- **Synthetic training data**: The model is trained entirely on programmatically generated text. Performance on real resumes with unusual formatting, non-English content, or domain-specific jargon may be lower than synthetic test metrics suggest.
+- **English only**: All training data is in English. The model will not reliably classify sections in other languages.
+- **Section granularity**: The model classifies pre-split sections. The built-in text splitter uses heuristics (section headers, paragraph breaks) that may not correctly segment all resume formats (e.g., single-column vs. multi-column PDFs, tables).
+- **8 categories only**: Some resume sections (e.g., Publications, Volunteer Work, Languages, Interests, References) are not covered by the current label set. These will be assigned to the closest matching category.
+- **Max length**: Input is truncated to 256 tokens. Very long sections may lose information.
+
+## Intended Use
+
+- Automated resume parsing pipelines
+- HR tech and applicant tracking systems
+- Resume formatting and analysis tools
+- Educational demonstrations of text classification fine-tuning
+
+This model is **not intended** for making hiring decisions. It is a text classification tool for structural parsing only.
+
+## Author
+
+[Lorenzo Scaturchio](https://huggingface.co/gr8monk3ys) (gr8monk3ys)

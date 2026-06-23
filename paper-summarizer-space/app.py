@@ -11,7 +11,6 @@ Author: Lorenzo Scaturchio (gr8monk3ys)
 License: MIT
 """
 
-import os
 import re
 import logging
 from typing import Optional

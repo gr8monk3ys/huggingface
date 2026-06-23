@@ -122,8 +122,6 @@ def compute_indicators(df: pd.DataFrame) -> pd.DataFrame:
         BB_Upper, BB_Middle, BB_Lower
     """
     close = df["Close"].astype(float)
-    high = df["High"].astype(float)
-    low = df["Low"].astype(float)
 
     # Simple Moving Averages
     df["SMA_20"] = ta.trend.sma_indicator(close, window=20)
@@ -664,10 +662,7 @@ def build_backtest_chart(
 
 def format_backtest_summary(bt: dict, ticker: str) -> str:
     """Return a Markdown summary of backtest results."""
-    strat_color = "green" if bt["strategy_return_pct"] >= 0 else "red"
-    bh_color = "green" if bt["buy_hold_return_pct"] >= 0 else "red"
     outperform = bt["strategy_return_pct"] - bt["buy_hold_return_pct"]
-    op_color = "green" if outperform >= 0 else "red"
 
     return f"""
 ### Backtest Results for {ticker}

@@ -10,7 +10,6 @@ import numpy as np
 from datasets import load_dataset, get_dataset_config_names
 import matplotlib.pyplot as plt
 import io
-import base64
 
 # ---------------------------------------------------------------------------
 # Popular Datasets for Quick Access
@@ -68,10 +67,10 @@ def generate_stats(df: pd.DataFrame) -> str:
         return "No data available"
 
     stats = []
-    stats.append(f"## Dataset Statistics\n")
+    stats.append("## Dataset Statistics\n")
     stats.append(f"**Rows loaded:** {len(df)}")
     stats.append(f"**Columns:** {len(df.columns)}")
-    stats.append(f"\n### Column Information\n")
+    stats.append("\n### Column Information\n")
 
     for col in df.columns:
         dtype = df[col].dtype

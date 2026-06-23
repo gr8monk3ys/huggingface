@@ -4,8 +4,6 @@ ML Interview Prep - Interactive practice for ML/DS interview questions.
 
 import gradio as gr
 import pandas as pd
-import random
-from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Sample Question Database

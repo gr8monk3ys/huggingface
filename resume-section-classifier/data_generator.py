@@ -10,9 +10,7 @@ Author: Lorenzo Scaturchio (gr8monk3ys)
 
 import csv
 import random
-import itertools
 from pathlib import Path
-from typing import Optional
 
 # ---------------------------------------------------------------------------
 # Entity pools – used to fill templates with realistic variation

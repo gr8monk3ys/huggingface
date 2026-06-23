@@ -5,7 +5,6 @@ Answer a few questions and get personalized model recommendations.
 """
 
 import gradio as gr
-from huggingface_hub import HfApi, list_models
 from typing import Optional
 
 # ---------------------------------------------------------------------------

@@ -5,7 +5,13 @@ Answer a few questions and get personalized model recommendations.
 """
 
 import gradio as gr
-from typing import Optional
+
+from core import (
+    SIZE_PREFERENCES,
+    fetch_live_models,
+    generate_code_example,
+    rank_curated,
+)
 
 # ---------------------------------------------------------------------------
 # Task Categories and Model Recommendations
@@ -32,7 +38,6 @@ TASKS = {
             {"name": "distilbert-base-uncased-finetuned-sst-2-english", "size": "67M", "license": "apache-2.0"},
             {"name": "cardiffnlp/twitter-roberta-base-sentiment-latest", "size": "125M", "license": "mit"},
             {"name": "facebook/bart-large-mnli", "size": "400M", "license": "mit"},
-            {"name": "MoritzLaworoutedistilbert-base-uncased-sentiment", "size": "67M", "license": "apache-2.0"},
         ]
     },
     "Question Answering": {
@@ -125,181 +130,56 @@ TASKS = {
     },
 }
 
-SIZE_PREFERENCES = {
-    "Tiny (< 100M)": {"min": 0, "max": 100},
-    "Small (100M - 500M)": {"min": 100, "max": 500},
-    "Medium (500M - 2B)": {"min": 500, "max": 2000},
-    "Large (2B - 10B)": {"min": 2000, "max": 10000},
-    "Any size": {"min": 0, "max": 100000},
-}
-
 # ---------------------------------------------------------------------------
-# Core Functions
+# Recommendation logic
 # ---------------------------------------------------------------------------
 
-def get_recommendations(
-    task: str,
-    size_pref: str,
-    priority: str,
-    use_case: str
-) -> tuple[str, str]:
-    """Get model recommendations based on user preferences."""
-
+def get_recommendations(task: str, size_pref: str, priority: str, use_case: str) -> tuple[str, str]:
+    """Recommend models for a task, querying the Hub live with a curated fallback."""
     if task not in TASKS:
         return "Please select a task.", ""
 
     task_info = TASKS[task]
-    models = task_info["top_models"]
+    task_id = task_info["id"]
 
-    # Filter by size if preference is set
-    size_range = SIZE_PREFERENCES.get(size_pref, SIZE_PREFERENCES["Any size"])
+    header = [
+        f"## Recommendations for: {task}\n",
+        f"*{task_info['description']}*\n",
+    ]
+    if use_case:
+        header.append(f"**Your use case:** {use_case}\n")
 
-    def parse_size(size_str):
-        """Parse size string to millions."""
-        size_str = size_str.upper()
-        if 'B' in size_str:
-            return float(size_str.replace('B', '')) * 1000
-        elif 'M' in size_str:
-            return float(size_str.replace('M', ''))
-        return 0
+    # 1) Try a live query against the HuggingFace Hub.
+    live = fetch_live_models(task_id, limit=8)
+    if live:
+        if priority == "Best Quality":
+            live = sorted(live, key=lambda m: m["likes"], reverse=True)
+        recs = header + ["_Live from the HuggingFace Hub, sorted by downloads._\n"]
+        if size_pref != "Any size":
+            recs.append(
+                "> Size filtering applies to the curated fallback; live results "
+                "are ranked by popularity.\n"
+            )
+        recs.append("---\n")
+        for i, m in enumerate(live[:5], 1):
+            recs.append(f"### {i}. {m['name']}")
+            recs.append(f"- **Downloads:** {m['downloads']:,} | **Likes:** {m['likes']:,}")
+            recs.append(f"- **Link:** [View on HuggingFace](https://huggingface.co/{m['name']})")
+            recs.append("")
+        return "\n".join(recs), generate_code_example(task, task_id, live[0]["name"])
 
-    if size_pref != "Any size":
-        models = [m for m in models if size_range["min"] <= parse_size(m["size"]) <= size_range["max"]]
-
+    # 2) Fall back to the curated list (e.g. when offline or rate-limited).
+    models = rank_curated(task_info["top_models"], size_pref, priority)
     if not models:
         return "No models match your size preference. Try 'Any size'.", ""
-
-    # Sort by priority
-    if priority == "Smallest/Fastest":
-        models = sorted(models, key=lambda x: parse_size(x["size"]))
-    elif priority == "Most Popular":
-        # Keep original order (already sorted by popularity)
-        pass
-    elif priority == "Best Quality":
-        # Larger models tend to be higher quality
-        models = sorted(models, key=lambda x: parse_size(x["size"]), reverse=True)
-
-    # Build recommendation output
-    recs = []
-    recs.append(f"## Recommendations for: {task}\n")
-    recs.append(f"*{task_info['description']}*\n")
-
-    if use_case:
-        recs.append(f"**Your use case:** {use_case}\n")
-
-    recs.append("---\n")
-
+    recs = header + ["_Curated picks (live Hub query unavailable right now)._\n", "---\n"]
     for i, model in enumerate(models[:4], 1):
         recs.append(f"### {i}. {model['name']}")
         recs.append(f"- **Size:** {model['size']} parameters")
         recs.append(f"- **License:** {model['license']}")
         recs.append(f"- **Link:** [View on HuggingFace](https://huggingface.co/{model['name']})")
         recs.append("")
-
-    # Build code example
-    code = generate_code_example(task, models[0] if models else None)
-
-    return "\n".join(recs), code
-
-
-def generate_code_example(task: str, model: Optional[dict]) -> str:
-    """Generate code example for using the recommended model."""
-
-    if not model:
-        return ""
-
-    model_name = model["name"]
-
-    code_templates = {
-        "Text Generation": f'''```python
-from transformers import pipeline
-
-generator = pipeline("text-generation", model="{model_name}")
-
-result = generator(
-    "Write a story about a robot:",
-    max_length=100,
-    num_return_sequences=1
-)
-print(result[0]["generated_text"])
-```''',
-
-        "Text Classification": f'''```python
-from transformers import pipeline
-
-classifier = pipeline("text-classification", model="{model_name}")
-
-result = classifier("I love this product! It's amazing!")
-print(result)  # [{{'label': 'POSITIVE', 'score': 0.99}}]
-```''',
-
-        "Question Answering": f'''```python
-from transformers import pipeline
-
-qa = pipeline("question-answering", model="{model_name}")
-
-result = qa(
-    question="What is the capital of France?",
-    context="France is a country in Europe. Paris is its capital city."
-)
-print(result["answer"])  # Paris
-```''',
-
-        "Translation": f'''```python
-from transformers import pipeline
-
-translator = pipeline("translation", model="{model_name}")
-
-result = translator("Hello, how are you?")
-print(result[0]["translation_text"])
-```''',
-
-        "Summarization": f'''```python
-from transformers import pipeline
-
-summarizer = pipeline("summarization", model="{model_name}")
-
-long_text = """Your long article text here..."""
-result = summarizer(long_text, max_length=130, min_length=30)
-print(result[0]["summary_text"])
-```''',
-
-        "Image Classification": f'''```python
-from transformers import pipeline
-
-classifier = pipeline("image-classification", model="{model_name}")
-
-result = classifier("path/to/image.jpg")
-print(result)  # [{{'label': 'cat', 'score': 0.95}}]
-```''',
-
-        "Speech Recognition": f'''```python
-from transformers import pipeline
-
-transcriber = pipeline("automatic-speech-recognition", model="{model_name}")
-
-result = transcriber("audio.mp3")
-print(result["text"])
-```''',
-
-        "Embeddings": f'''```python
-from sentence_transformers import SentenceTransformer
-
-model = SentenceTransformer("{model_name}")
-
-sentences = ["This is a sentence", "This is another sentence"]
-embeddings = model.encode(sentences)
-print(embeddings.shape)  # (2, 384)
-```''',
-    }
-
-    return code_templates.get(task, f'''```python
-from transformers import pipeline
-
-pipe = pipeline("{TASKS[task]['id']}", model="{model_name}")
-result = pipe("Your input here")
-print(result)
-```''')
+    return "\n".join(recs), generate_code_example(task, task_id, models[0]["name"])
 
 
 # ---------------------------------------------------------------------------

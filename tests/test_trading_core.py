@@ -4,7 +4,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import core
+from conftest import load_local_module
+
+core = load_local_module("trading_core", "trading-dashboard-space/core.py")
 
 
 def test_crosses_above_true():

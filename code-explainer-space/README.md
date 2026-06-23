@@ -4,7 +4,7 @@ emoji: 💻
 colorFrom: green
 colorTo: blue
 sdk: gradio
-sdk_version: 5.9.1
+sdk_version: 5.31.0
 python_version: "3.10"
 app_file: app.py
 pinned: false
@@ -29,10 +29,10 @@ Choose your expertise level:
 
 ### Structured Output
 Each explanation includes:
-- **Overview** - What the code does at a high level
-- **Line-by-Line Breakdown** - Detailed explanation of each part
+- **Overview** - A brief summary of what the code does
+- **Step-by-Step Breakdown** - Section-by-section explanation of the code
 - **Key Concepts** - Important programming concepts used
-- **Potential Issues** - Common pitfalls or improvements
+- **Potential Improvements** - Suggested improvements, best practices, or issues to be aware of
 
 ### Syntax Highlighting
 Code is displayed with proper syntax highlighting for readability.
@@ -48,7 +48,7 @@ Code is displayed with proper syntax highlighting for readability.
 
 | Component | Technology |
 |-----------|------------|
-| Web Framework | Gradio 5.9.1 |
+| Web Framework | Gradio 5.31.0 |
 | AI Model | Mistral-7B via HuggingFace Inference API |
 | Code Formatting | Pygments |
 
@@ -64,6 +64,10 @@ Code is displayed with proper syntax highlighting for readability.
 - Works best with code snippets under 500 lines
 - Complex multi-file projects may need to be explained piece by piece
 - AI explanations should be verified for critical code
+
+## Configuration
+
+This Space calls the **HuggingFace Inference API** (Mistral-7B). It requires an `HF_TOKEN` secret — a token with inference access — set in **Space Settings → Secrets**. Without it, generation will fail.
 
 ## License
 

@@ -24,14 +24,12 @@ import argparse
 import logging
 import re
 import time
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import arxiv
 import pandas as pd
 from datasets import Dataset, DatasetDict, Features, Sequence, Value
-from huggingface_hub import HfApi
 from tqdm import tqdm
 
 # ---------------------------------------------------------------------------

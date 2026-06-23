@@ -4,8 +4,6 @@ ML Interview Prep - Interactive practice for ML/DS interview questions.
 
 import gradio as gr
 import pandas as pd
-import random
-from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Sample Question Database
@@ -47,23 +45,24 @@ QUESTIONS = [
 questions_df = pd.DataFrame(QUESTIONS)
 
 # ---------------------------------------------------------------------------
-# Application State
+# Per-session state
 # ---------------------------------------------------------------------------
 
-class QuizState:
-    def __init__(self):
-        self.current_question = None
-        self.answered = 0
-        self.questions_seen = []
 
-quiz_state = QuizState()
+def new_session_state() -> dict:
+    """Return a fresh per-session quiz state.
+
+    Held in a ``gr.State`` so each visitor has independent progress and the
+    revealed answer can never leak across concurrent users.
+    """
+    return {"current": None, "answered": 0, "seen": []}
 
 # ---------------------------------------------------------------------------
 # Core Functions
 # ---------------------------------------------------------------------------
 
-def get_random_question(categories: list, difficulties: list) -> dict:
-    """Get a random question matching filters."""
+def get_random_question(categories: list, difficulties: list, state: dict) -> dict:
+    """Get a random question matching filters, updating *state* in place."""
     filtered = questions_df.copy()
 
     if categories and "All" not in categories:
@@ -76,13 +75,13 @@ def get_random_question(categories: list, difficulties: list) -> dict:
         return None
 
     # Avoid repeating recent questions
-    available = filtered[~filtered["id"].isin(quiz_state.questions_seen[-10:])]
+    available = filtered[~filtered["id"].isin(state["seen"][-10:])]
     if available.empty:
         available = filtered
 
     question = available.sample(1).iloc[0].to_dict()
-    quiz_state.questions_seen.append(question["id"])
-    quiz_state.current_question = question
+    state["seen"].append(question["id"])
+    state["current"] = question
 
     return question
 
@@ -121,21 +120,24 @@ def format_answer(question: dict) -> str:
     return output
 
 
-def start_quiz(categories: list, difficulties: list) -> tuple[str, str, str]:
-    """Start a new quiz question."""
-    question = get_random_question(categories, difficulties)
-    quiz_state.answered += 1
+def start_quiz(categories: list, difficulties: list, state: dict) -> tuple[str, str, str, dict]:
+    """Start a new quiz question for this session."""
+    if state is None:
+        state = new_session_state()
 
-    question_text = format_question(question)
-    status = f"Question #{quiz_state.answered}"
+    question = get_random_question(categories, difficulties, state)
+    if question is None:
+        return format_question(None), "", "No questions match your filters.", state
 
-    return question_text, "", status
+    # Only count questions that were actually served.
+    state["answered"] += 1
+    return format_question(question), "", f"Question #{state['answered']}", state
 
 
-def reveal_answer() -> str:
-    """Reveal the answer to current question."""
-    if quiz_state.current_question:
-        return format_answer(quiz_state.current_question)
+def reveal_answer(state: dict) -> str:
+    """Reveal the answer to this session's current question."""
+    if state and state.get("current"):
+        return format_answer(state["current"])
     return "No question loaded. Click 'Next Question' first."
 
 
@@ -185,6 +187,9 @@ with gr.Blocks(title="ML Interview Prep", theme=gr.themes.Soft()) as demo:
     Choose your categories and difficulty, then test your knowledge!
     """)
 
+    # Per-session state (deep-copied by Gradio for each visitor)
+    quiz_session = gr.State(new_session_state())
+
     with gr.Tabs():
         # Quiz Mode Tab
         with gr.TabItem("Quiz Mode"):
@@ -214,13 +219,13 @@ with gr.Blocks(title="ML Interview Prep", theme=gr.themes.Soft()) as demo:
 
             next_btn.click(
                 fn=start_quiz,
-                inputs=[category_select, difficulty_select],
-                outputs=[question_output, answer_output, status_text],
+                inputs=[category_select, difficulty_select, quiz_session],
+                outputs=[question_output, answer_output, status_text, quiz_session],
             )
 
             reveal_btn.click(
                 fn=reveal_answer,
-                inputs=[],
+                inputs=[quiz_session],
                 outputs=answer_output,
             )
 

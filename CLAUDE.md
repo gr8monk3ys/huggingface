@@ -2,31 +2,37 @@
 
 ## Project Structure
 
-This is a monorepo containing 6 independent HuggingFace projects. Each subfolder is designed to be published independently to the HuggingFace Hub.
+This is a monorepo containing 15 independent HuggingFace projects (datasets, models, and Spaces). Each subfolder is designed to be published independently to the HuggingFace Hub.
 
 ```
 huggingface/
-├── academic-papers-dataset/   # Dataset: arXiv papers collection
-│   ├── create_dataset.py      # Fetches papers via arXiv API, publishes to HF Hub
-│   └── explore_dataset.py     # EDA visualizations (TF-IDF, timelines)
-├── paper-classifier-model/    # Model: DistilBERT paper classifier
-│   ├── train.py               # Fine-tuning pipeline (5 epochs, 2e-5 lr)
-│   └── inference.py           # Prediction wrapper
-├── paper-summarizer-space/    # Space: BART-based paper summarizer
-│   └── app.py                 # Gradio app with PDF upload + chunked summarization
-├── resume-analyzer-space/     # Space: Resume-job description matcher
-│   └── app.py                 # Gradio app with semantic + keyword scoring
-├── resume-section-classifier/ # Model: Resume section classifier
-│   ├── train.py               # DistilBERT fine-tuning
-│   ├── data_generator.py      # Synthetic training data generation
-│   └── inference.py           # Section classification API
-└── trading-dashboard-space/   # Space: Stock technical analysis dashboard
-    └── app.py                 # Gradio app with yfinance + Plotly charts
+# --- Academic Paper Intelligence ---
+├── academic-papers-dataset/   # Dataset: arXiv paper metadata (cs.AI/CL/CV/LG, stat.ML)
+├── paper-classifier-model/    # Model: DistilBERT arXiv paper classifier
+├── paper-summarizer-space/    # Space: BART-Large-CNN summarizer (HF Inference API)
+├── paper-recommender-space/   # Space: related-paper recommender via embedding similarity
+├── research-assistant-space/  # Space: agentic RAG (plan -> retrieve -> cited answer) over the papers dataset
+# --- Resume & Career Tools ---
+├── resume-section-classifier/ # Model: DistilBERT resume-section classifier (synthetic data)
+├── resume-analyzer-space/     # Space: resume <-> job-description semantic matcher
+# --- Financial Analysis ---
+├── trading-dashboard-space/   # Space: technical-analysis dashboard (yfinance + Plotly), educational only
+# --- AI / LLM Utilities ---
+├── code-explainer-space/      # Space: code explanations via Mistral-7B (HF Inference API)
+├── prompt-enhancer-space/     # Space: prompt rewriter via Mistral-7B (HF Inference API)
+├── model-arena-space/         # Space: side-by-side LLM comparison + voting
+├── ml-interview-space/        # Space: ML/DS interview question practice
+├── model-selector-space/      # Space: find HF models for a task (live Hub query + fallback)
+# --- Generative & Data Exploration ---
+├── dataset-explorer-space/    # Space: visualize any HF dataset
+├── illusion-generator-space/  # Space: optical-illusion image generator (FLUX.1-schnell)
+└── style-mixer-space/         # Space: blend two art styles into one image (FLUX.1-schnell)
 ```
 
 ## Conventions
 
-- **Spaces** use Gradio 4.44 with `app.py` as the entry point
+- **Spaces** use Gradio 5.31 (pinned `gradio>=5.31.0,<6.0.0`) with `app.py` as the entry point
+- **LLM/image Spaces** call the HuggingFace Inference API via `huggingface_hub.InferenceClient` and need an `HF_TOKEN` secret set in Space Settings
 - **Models** use HuggingFace Transformers Trainer API with early stopping
 - **Datasets** use HuggingFace Datasets library with Parquet storage
 - All projects are MIT licensed

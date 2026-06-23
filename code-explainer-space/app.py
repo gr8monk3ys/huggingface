@@ -2,11 +2,14 @@
 Code Explainer - AI-powered code explanation using HuggingFace Inference API.
 """
 
+import html
+
 import gradio as gr
-from huggingface_hub import InferenceClient
 from pygments import highlight
 from pygments.lexers import get_lexer_by_name, guess_lexer
 from pygments.formatters import HtmlFormatter
+
+from hf_client import InferenceError, make_client, with_retry
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -43,7 +46,7 @@ EXPLANATION_LEVELS = {
 # Initialize client
 # ---------------------------------------------------------------------------
 
-client = InferenceClient(MODEL_ID)
+client = make_client(MODEL_ID)
 
 # ---------------------------------------------------------------------------
 # Utility functions
@@ -77,7 +80,7 @@ def format_code_html(code: str, language: str) -> str:
         formatter = HtmlFormatter(style="monokai", noclasses=True)
         return highlight(code, lexer, formatter)
     except Exception:
-        return f"<pre><code>{code}</code></pre>"
+        return f"<pre><code>{html.escape(code)}</code></pre>"
 
 
 # ---------------------------------------------------------------------------
@@ -96,12 +99,12 @@ def explain_code(code: str, language: str, level: str) -> tuple[str, str]:
 
     # Build prompt
     level_instruction = EXPLANATION_LEVELS.get(level, EXPLANATION_LEVELS["Intermediate"])
+    lexer_hint = detected_lang.split()[0].lower() if detected_lang.strip() else ""
 
-    prompt = f"""You are an expert programming tutor. {level_instruction}
+    system_prompt = f"You are an expert programming tutor. {level_instruction}"
+    user_prompt = f"""Explain the following code.
 
-Here is the code to explain:
-
-```{detected_lang.lower()}
+```{lexer_hint}
 {code}
 ```
 
@@ -122,16 +125,17 @@ Suggest any improvements, best practices, or potential issues to be aware of.
 Keep your explanation clear, accurate, and educational."""
 
     try:
-        # Call the inference API
-        response = client.text_generation(
-            prompt,
-            max_new_tokens=1500,
+        completion = with_retry(
+            client.chat_completion,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            max_tokens=1500,
             temperature=0.7,
             top_p=0.95,
-            do_sample=True,
         )
-
-        explanation = response.strip()
+        explanation = completion.choices[0].message.content.strip()
 
         # Add language badge
         explanation = f"**Detected Language:** `{detected_lang}`\n\n---\n\n{explanation}"
@@ -141,9 +145,8 @@ Keep your explanation clear, accurate, and educational."""
 
         return explanation, formatted_code
 
-    except Exception as e:
-        error_msg = f"Error generating explanation: {str(e)}"
-        return error_msg, format_code_html(code, detected_lang)
+    except InferenceError as e:
+        return f"**{e}**", format_code_html(code, detected_lang)
 
 
 # ---------------------------------------------------------------------------

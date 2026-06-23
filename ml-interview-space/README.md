@@ -4,7 +4,7 @@ emoji: 🎯
 colorFrom: yellow
 colorTo: red
 sdk: gradio
-sdk_version: 5.9.1
+sdk_version: 5.31.0
 python_version: "3.10"
 app_file: app.py
 pinned: false
@@ -14,54 +14,49 @@ short_description: Practice ML and Data Science interview questions
 
 # ML Interview Prep
 
-An interactive tool for practicing machine learning and data science interview questions. Features 500+ curated questions across 10 categories with detailed expert answers.
+An interactive tool for practicing machine learning and data science interview questions. Ships with 15 curated questions across 7 categories, each with a detailed expert answer. (The About tab computes these counts live from the question set.)
 
 ## Features
 
-### 500+ Interview Questions
-Comprehensive coverage of ML/DS interview topics from top tech companies.
+### 15 Interview Questions
+A small, hand-written set of ML/DS interview questions, each paired with a thorough answer and company/topic tags.
 
-### 10 Categories
-- Statistics & Probability
-- ML Theory & Algorithms
+### 7 Categories
+- Statistics
+- ML Theory
 - Deep Learning
-- Natural Language Processing
-- Computer Vision
+- NLP
 - System Design
-- SQL & Databases
-- Python Programming
 - Feature Engineering
-- A/B Testing & Experimentation
+- A/B Testing
 
 ### Three Difficulty Levels
 - **Easy** - Fundamentals and basic concepts
 - **Medium** - Applied knowledge and trade-offs
 - **Hard** - Advanced topics and edge cases
 
-### Practice Modes
+### Tabs
 
 **Quiz Mode**
-- Random questions based on your filters
+- Random questions based on your category and difficulty filters
 - Try to answer before revealing the solution
-- Track your progress
+- Per-session progress counter
 
-**Flashcard Mode**
-- Quick review of key concepts
-- Flip cards to see answers
-- Great for last-minute prep
-
-**Browse Mode**
-- Search and filter all questions
+**Browse All**
+- Search and filter the full question set
 - Study specific topics in depth
 
+**About**
+- Live database statistics (total questions, categories, difficulty breakdown) and interview-prep tips
+
 ### Company Tags
-Questions tagged by company (Google, Meta, Amazon, etc.) so you can focus on company-specific prep.
+Questions are tagged with companies where similar questions are commonly asked (Google, Meta, Amazon, etc.).
 
 ## How to Use
 
 1. **Select categories** you want to practice
 2. **Choose difficulty** level
-3. **Pick a mode** (Quiz, Flashcard, or Browse)
+3. **Use Quiz Mode** for random practice or **Browse All** to study
 4. **Start practicing!**
 
 ## Question Sources

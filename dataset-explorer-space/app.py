@@ -10,7 +10,8 @@ import numpy as np
 from datasets import load_dataset, get_dataset_config_names
 import matplotlib.pyplot as plt
 import io
-import base64
+
+from PIL import Image
 
 # ---------------------------------------------------------------------------
 # Popular Datasets for Quick Access
@@ -68,10 +69,10 @@ def generate_stats(df: pd.DataFrame) -> str:
         return "No data available"
 
     stats = []
-    stats.append(f"## Dataset Statistics\n")
+    stats.append("## Dataset Statistics\n")
     stats.append(f"**Rows loaded:** {len(df)}")
     stats.append(f"**Columns:** {len(df.columns)}")
-    stats.append(f"\n### Column Information\n")
+    stats.append("\n### Column Information\n")
 
     for col in df.columns:
         dtype = df[col].dtype
@@ -145,13 +146,16 @@ def generate_visualization(df: pd.DataFrame) -> str:
 
     plt.tight_layout()
 
-    # Convert to base64 for display
+    # Render the figure to an in-memory PNG and return a PIL image
+    # (gr.Image cannot reliably render a raw BytesIO buffer).
     buf = io.BytesIO()
     plt.savefig(buf, format='png', dpi=100, bbox_inches='tight')
     buf.seek(0)
     plt.close()
 
-    return buf
+    image = Image.open(buf).copy()
+    buf.close()
+    return image
 
 
 def explore_dataset(dataset_id: str, config: str, split: str, num_samples: int):
@@ -183,11 +187,6 @@ def explore_dataset(dataset_id: str, config: str, split: str, num_samples: int):
     sample_df = df.head(10)
 
     return stats, config_info, viz_buf, sample_df
-
-
-def load_popular_dataset(dataset_name: str):
-    """Load a popular dataset quickly."""
-    return dataset_name, "", "train", 100
 
 
 # ---------------------------------------------------------------------------

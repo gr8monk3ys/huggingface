@@ -70,17 +70,17 @@ Default configuration produces **1,920 examples** (80 base examples x 3 variants
 
 ## Metrics
 
-Evaluated on the held-out synthetic test set (192 examples, stratified):
+> **These figures are INDICATIVE only.** They are measured on a held-out split of the model's own **synthetic, self-generated** data (192 examples, stratified) — not a real-world benchmark. Because the train and test sets are produced by the same template-based generator, they share vocabulary and structure, so these scores **overstate** how the model will perform on real resumes.
 
-| Metric | Score |
-|--------|-------|
+| Metric | Score (synthetic test set) |
+|--------|----------------------------|
 | Accuracy | ~0.95+ |
 | F1 (macro) | ~0.95+ |
 | F1 (weighted) | ~0.95+ |
 | Precision (weighted) | ~0.95+ |
 | Recall (weighted) | ~0.95+ |
 
-> Note: Exact metrics depend on the random seed and training run. Scores on real-world resumes may differ from synthetic test performance.
+> Note: Exact metrics depend on the random seed and training run. Scores on real-world resumes will differ from (and are expected to be lower than) this synthetic test performance.
 
 ## Usage
 

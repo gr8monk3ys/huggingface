@@ -24,15 +24,13 @@ from __future__ import annotations
 
 import argparse
 import logging
-import textwrap
-from collections import Counter
 from pathlib import Path
 
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from datasets import DatasetDict, load_from_disk
+from datasets import load_from_disk
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 # Use non-interactive backend so the script works headlessly.
@@ -104,7 +102,7 @@ def print_summary(df: pd.DataFrame) -> None:
 
     # Abstract lengths
     abs_len = df["abstract"].str.split().str.len()
-    print(f"\n  Abstract length (words):")
+    print("\n  Abstract length (words):")
     print(f"    mean   : {abs_len.mean():.0f}")
     print(f"    median : {abs_len.median():.0f}")
     print(f"    min    : {abs_len.min():.0f}")
@@ -112,7 +110,7 @@ def print_summary(df: pd.DataFrame) -> None:
     print(f"    std    : {abs_len.std():.1f}")
 
     # Category distribution
-    print(f"\n  Primary category distribution:")
+    print("\n  Primary category distribution:")
     for cat, count in df["primary_category"].value_counts().items():
         pct = 100.0 * count / len(df)
         print(f"    {cat:<12s}  {count:>5,}  ({pct:5.1f}%)")

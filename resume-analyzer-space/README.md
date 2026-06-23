@@ -4,7 +4,7 @@ emoji: 📋
 colorFrom: green
 colorTo: blue
 sdk: gradio
-sdk_version: 5.9.1
+sdk_version: 5.31.0
 python_version: "3.10"
 app_file: app.py
 pinned: false
@@ -66,7 +66,7 @@ Job Description  ────┘
 
 | Component | Technology |
 |---|---|
-| Web framework | Gradio 4.44 |
+| Web framework | Gradio 5.31.0 |
 | Semantic model | sentence-transformers/all-MiniLM-L6-v2 |
 | Keyword extraction | scikit-learn TfidfVectorizer |
 | PDF parsing | PyMuPDF (fitz) |

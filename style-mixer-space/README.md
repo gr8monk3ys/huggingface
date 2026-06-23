@@ -4,7 +4,7 @@ emoji: 🎨
 colorFrom: purple
 colorTo: pink
 sdk: gradio
-sdk_version: 5.9.1
+sdk_version: 5.31.0
 python_version: "3.10"
 app_file: app.py
 pinned: false
@@ -60,9 +60,9 @@ Blend two artistic styles into one unique masterpiece using AI!
 
 ## Technical Details
 
-- **Model**: FLUX.1-schnell (fast, high-quality generation)
+- **Model**: FLUX.1-schnell (fast, high-quality generation) via the HuggingFace Inference API
 - **Style Weighting**: Dynamic prompt weighting based on blend ratio
-- **Resolution**: High-quality 4K output
+- **Resolution**: High-quality (~1024px) output (the model's default; no custom width/height is set)
 
 ## Tips
 
@@ -70,6 +70,10 @@ Blend two artistic styles into one unique masterpiece using AI!
 - Try pairing old (Baroque) with new (Cyberpunk)
 - Use the random button to discover unexpected combinations
 - Custom subjects allow for personalized artwork
+
+## Configuration
+
+This Space calls the **HuggingFace Inference API** for image generation (FLUX.1-schnell). It requires an `HF_TOKEN` secret — a token with inference access — set in **Space Settings → Secrets**. Because FLUX runs on a serverless image model, the token also needs available inference credits/quota; without it, generation will fail.
 
 ## License
 

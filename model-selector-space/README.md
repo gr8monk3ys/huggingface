@@ -4,7 +4,7 @@ emoji: 🎯
 colorFrom: yellow
 colorTo: red
 sdk: gradio
-sdk_version: 5.9.1
+sdk_version: 5.31.0
 python_version: "3.10"
 app_file: app.py
 pinned: false
@@ -14,7 +14,9 @@ short_description: Find the perfect HuggingFace model for your task
 
 # Model Selector
 
-Find the perfect HuggingFace model for your task. Answer a few simple questions and get personalized recommendations with ready-to-use code examples.
+Find the perfect HuggingFace model for your task. Answer a few simple questions and get recommendations with ready-to-use code examples.
+
+Recommendations are fetched **live from the HuggingFace Hub** (top models for the task, ranked by downloads). If the Hub can't be reached (offline or rate-limited), the app falls back to a curated shortlist so it always returns something useful.
 
 ## Features
 
@@ -37,10 +39,9 @@ Find the perfect HuggingFace model for your task. Answer a few simple questions 
 
 ### Ready-to-Use Code
 Every recommendation includes:
-- Working Python code example
-- Direct link to the model
-- License information
-- Size/speed tradeoffs
+- Working Python code example for the task
+- Direct link to the model on the Hub
+- Live download/like counts (or size/license for curated fallback picks)
 
 ## How to Use
 
@@ -52,13 +53,10 @@ Every recommendation includes:
 
 ## Example Output
 
-For "Text Generation" with "Small" size preference:
-
-| Rank | Model | Size | License |
-|------|-------|------|---------|
-| 1 | microsoft/phi-3-mini | 3.8B | MIT |
-| 2 | Qwen/Qwen2.5-3B-Instruct | 3B | Apache |
-| 3 | mistralai/Mistral-7B | 7B | Apache |
+For "Text Generation", the app lists the current top models on the Hub with
+their live download and like counts, a link, and a ready-to-run `transformers`
+snippet for the top pick. (Size filtering applies to the curated fallback;
+live results are ranked by popularity.)
 
 ## Quick Reference
 

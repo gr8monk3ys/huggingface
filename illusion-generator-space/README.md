@@ -4,7 +4,7 @@ emoji: 🌀
 colorFrom: indigo
 colorTo: purple
 sdk: gradio
-sdk_version: 5.9.1
+sdk_version: 5.31.0
 python_version: "3.10"
 app_file: app.py
 pinned: false
@@ -90,6 +90,10 @@ Some optical illusions may cause mild visual effects like:
 - Slight disorientation
 
 Take breaks if you experience discomfort.
+
+## Configuration
+
+This Space calls the **HuggingFace Inference API** for image generation (FLUX.1-schnell). It requires an `HF_TOKEN` secret — a token with inference access — set in **Space Settings → Secrets**. Because FLUX runs on a serverless image model, the token also needs available inference credits/quota; without it, generation will fail.
 
 ## License
 

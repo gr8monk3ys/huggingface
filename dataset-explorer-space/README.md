@@ -4,7 +4,7 @@ emoji: 📊
 colorFrom: blue
 colorTo: green
 sdk: gradio
-sdk_version: 5.9.1
+sdk_version: 5.31.0
 python_version: "3.10"
 app_file: app.py
 pinned: false
@@ -58,7 +58,7 @@ Popular datasets available with one click:
 
 | Component | Technology |
 |-----------|------------|
-| Web Framework | Gradio 5.9.1 |
+| Web Framework | Gradio 5.31.0 |
 | Data Loading | HuggingFace Datasets |
 | Visualization | Matplotlib |
 | Data Processing | Pandas |

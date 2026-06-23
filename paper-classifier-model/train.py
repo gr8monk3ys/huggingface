@@ -12,7 +12,6 @@ License: MIT
 
 import argparse
 import logging
-import os
 import sys
 from pathlib import Path
 
@@ -93,6 +92,15 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=None,
         help="Cap the number of evaluation samples (useful for debugging).",
+    )
+    parser.add_argument(
+        "--trust_remote_code",
+        action="store_true",
+        help=(
+            "Allow executing a dataset's remote loading script. Required for "
+            "legacy script-based datasets such as the default "
+            "ccdv/arxiv-classification. Only enable for datasets you trust."
+        ),
     )
 
     # Training
@@ -189,24 +197,35 @@ def build_label_mappings(label_names: list[str]) -> tuple[dict, dict]:
 
 def load_and_prepare_dataset(
     dataset_name: str,
-    label2id: dict[str, int],
+    fallback_label_names: list[str],
     max_train_samples: int | None = None,
     max_eval_samples: int | None = None,
-) -> DatasetDict:
-    """Load the dataset and normalise the label column.
+    seed: int = 42,
+    trust_remote_code: bool = False,
+) -> tuple[DatasetDict, dict[str, int], dict[int, str]]:
+    """Load a dataset and normalise it into ``train``/``validation``/``test``.
 
-    The function handles two common dataset layouts:
-      1. The dataset already has train / validation / test splits and a
-         numeric ``label`` column whose values match our ``label2id``.
-      2. The dataset has a string ``label`` column that needs mapping.
+    The label space is derived from the dataset itself so the model is trained
+    against the *dataset's own* classes rather than a hard-coded list:
 
-    Returns a ``DatasetDict`` with ``train`` and ``validation`` splits.
+      1. If the label column is a ``ClassLabel``, its names/ordering are used
+         verbatim (the common case, e.g. ``ccdv/arxiv-classification``).
+      2. If labels are strings, the canonical ordering is taken from the
+         observed values (preferring ``fallback_label_names`` when it covers
+         them all).
+      3. If labels are bare integers, names default to ``LABEL_i`` unless
+         ``fallback_label_names`` has exactly the right length.
+
+    Returns ``(DatasetDict, label2id, id2label)``. The three splits are always
+    distinct: validation (and, if missing, test) are carved out of ``train`` so
+    the test split is never used for model selection.
     """
     logger.info("Loading dataset: %s", dataset_name)
-    raw = load_dataset(dataset_name, trust_remote_code=True)
+    raw = load_dataset(dataset_name, trust_remote_code=trust_remote_code)
 
     # Determine the text and label column names --------------------------
-    sample_columns = list(next(iter(raw.values())).column_names)
+    first_split = next(iter(raw.values()))
+    sample_columns = list(first_split.column_names)
     text_col = None
     for candidate in ("text", "abstract", "input", "sentence"):
         if candidate in sample_columns:
@@ -226,6 +245,29 @@ def load_and_prepare_dataset(
         label_col = sample_columns[-1]
     logger.info("Using label column: '%s'", label_col)
 
+    # Derive the canonical label names from the dataset ------------------
+    orig_feature = first_split.features.get(label_col)
+    sample_label = first_split[0][label_col]
+    if isinstance(orig_feature, ClassLabel):
+        label_names = list(orig_feature.names)
+        logger.info("Using %d labels from the dataset's ClassLabel.", len(label_names))
+    elif isinstance(sample_label, str):
+        observed = sorted({v for split in raw.values() for v in split.unique(label_col)})
+        if set(observed).issubset(set(fallback_label_names)):
+            label_names = list(fallback_label_names)
+        else:
+            label_names = observed
+        logger.info("Derived %d labels from string values.", len(label_names))
+    else:
+        max_id = max(max(split.unique(label_col)) for split in raw.values())
+        if len(fallback_label_names) == max_id + 1:
+            label_names = list(fallback_label_names)
+        else:
+            label_names = [f"LABEL_{i}" for i in range(max_id + 1)]
+        logger.info("Derived %d integer labels.", len(label_names))
+
+    label2id, id2label = build_label_mappings(label_names)
+
     # Rename columns so downstream code can rely on 'text' and 'label' ---
     def _rename(example):
         return {"text": str(example[text_col]), "label": example[label_col]}
@@ -233,33 +275,41 @@ def load_and_prepare_dataset(
     raw = raw.map(_rename, remove_columns=sample_columns)
 
     # If labels are strings, map them to ints using label2id -------------
-    sample_label = raw[list(raw.keys())[0]][0]["label"]
     if isinstance(sample_label, str):
         logger.info("Mapping string labels to integer ids.")
 
         def _map_label(example):
-            lbl = example["label"]
-            if lbl in label2id:
-                example["label"] = label2id[lbl]
-            else:
-                example["label"] = -1  # will be filtered out
+            example["label"] = label2id.get(example["label"], -1)
             return example
 
         raw = raw.map(_map_label)
         raw = raw.filter(lambda ex: ex["label"] != -1)
 
-    # Ensure we have a ClassLabel feature --------------------------------
-    label_feature = ClassLabel(
-        num_classes=len(label2id), names=list(label2id.keys())
-    )
+    # Ensure we have a ClassLabel feature with our canonical ordering ----
+    label_feature = ClassLabel(num_classes=len(label_names), names=label_names)
     raw = raw.cast_column("label", label_feature)
 
-    # Build train / validation splits ------------------------------------
-    if "validation" not in raw and "test" in raw:
-        raw["validation"] = raw.pop("test")
-    elif "validation" not in raw:
-        split = raw["train"].train_test_split(test_size=0.1, seed=42, stratify_by_column="label")
-        raw = DatasetDict({"train": split["train"], "validation": split["test"]})
+    # Build three distinct splits ----------------------------------------
+    # Never reuse the test split for model selection: carve validation
+    # (and a test split, if absent) out of train instead.
+    train_split = raw["train"] if "train" in raw else first_split
+    test_split = raw["test"] if "test" in raw else None
+    val_split = raw["validation"] if "validation" in raw else None
+
+    if test_split is None:
+        carved = train_split.train_test_split(
+            test_size=0.1, seed=seed, stratify_by_column="label"
+        )
+        train_split, test_split = carved["train"], carved["test"]
+    if val_split is None:
+        carved = train_split.train_test_split(
+            test_size=0.1111, seed=seed, stratify_by_column="label"
+        )
+        train_split, val_split = carved["train"], carved["test"]
+
+    raw = DatasetDict(
+        {"train": train_split, "validation": val_split, "test": test_split}
+    )
 
     # Subsample if requested ---------------------------------------------
     if max_train_samples is not None:
@@ -270,11 +320,12 @@ def load_and_prepare_dataset(
         )
 
     logger.info(
-        "Dataset sizes -> train: %d, validation: %d",
+        "Dataset sizes -> train: %d, validation: %d, test: %d",
         len(raw["train"]),
         len(raw["validation"]),
+        len(raw["test"]),
     )
-    return raw
+    return raw, label2id, id2label
 
 
 def tokenize_dataset(
@@ -311,6 +362,9 @@ def build_compute_metrics_fn():
 
     def compute_metrics(eval_pred):
         logits, labels = eval_pred
+        # Some model/config combinations return predictions as a tuple.
+        if isinstance(logits, tuple):
+            logits = logits[0]
         predictions = np.argmax(logits, axis=-1)
         results = {}
         results.update(acc_metric.compute(predictions=predictions, references=labels))
@@ -319,6 +373,10 @@ def build_compute_metrics_fn():
                 predictions=predictions, references=labels, average="weighted"
             )
         )
+        # Macro F1 surfaces minority-class performance that weighted F1 hides.
+        results["f1_macro"] = f1_metric.compute(
+            predictions=predictions, references=labels, average="macro"
+        )["f1"]
         results.update(
             prec_metric.compute(
                 predictions=predictions, references=labels, average="weighted"
@@ -348,18 +406,17 @@ def main() -> None:
     device = "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
     logger.info("Using device: %s", device)
 
-    # Label mappings
-    label2id, id2label = build_label_mappings(LABEL_NAMES)
-    num_labels = len(LABEL_NAMES)
-    logger.info("Number of labels: %d", num_labels)
-
-    # Dataset
-    dataset = load_and_prepare_dataset(
+    # Dataset (label space is derived from the dataset itself)
+    dataset, label2id, id2label = load_and_prepare_dataset(
         dataset_name=args.dataset_name,
-        label2id=label2id,
+        fallback_label_names=LABEL_NAMES,
         max_train_samples=args.max_train_samples,
         max_eval_samples=args.max_eval_samples,
+        seed=args.seed,
+        trust_remote_code=args.trust_remote_code,
     )
+    num_labels = len(label2id)
+    logger.info("Number of labels: %d", num_labels)
 
     # Tokenizer
     logger.info("Loading tokenizer: %s", MODEL_NAME)
@@ -422,11 +479,20 @@ def main() -> None:
     trainer.log_metrics("train", metrics)
     trainer.save_metrics("train", metrics)
 
-    # Evaluate
-    logger.info("Running final evaluation ...")
+    # Evaluate on the validation split (used for model selection)
+    logger.info("Running validation evaluation ...")
     eval_metrics = trainer.evaluate()
     trainer.log_metrics("eval", eval_metrics)
     trainer.save_metrics("eval", eval_metrics)
+
+    # Evaluate on the held-out test split (never seen during selection)
+    if "test" in tokenized_dataset:
+        logger.info("Running held-out test evaluation ...")
+        test_metrics = trainer.evaluate(
+            tokenized_dataset["test"], metric_key_prefix="test"
+        )
+        trainer.log_metrics("test", test_metrics)
+        trainer.save_metrics("test", test_metrics)
 
     # Save model + tokenizer
     model_dir = Path(args.model_dir)

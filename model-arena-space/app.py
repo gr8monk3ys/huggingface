@@ -3,10 +3,12 @@ AI Model Arena - Compare AI model outputs side by side.
 Test prompts across multiple models and vote for the best response.
 """
 
-import gradio as gr
-from huggingface_hub import InferenceClient
 import random
 import time
+
+import gradio as gr
+
+from hf_client import InferenceError, friendly_error, make_client, with_retry
 
 # ---------------------------------------------------------------------------
 # Model Configurations
@@ -90,27 +92,28 @@ vote_counts = {model: {"wins": 0, "battles": 0} for model in MODELS}
 
 def get_model_response(model_id: str, prompt: str, max_tokens: int = 500) -> tuple:
     """Get response from a model with timing."""
-    client = InferenceClient(model_id)
+    client = make_client(model_id)
 
     start_time = time.time()
     try:
-        messages = [{"role": "user", "content": prompt}]
-        response = client.chat_completion(
-            messages=messages,
+        response = with_retry(
+            client.chat_completion,
+            messages=[{"role": "user", "content": prompt}],
             max_tokens=max_tokens,
             temperature=0.7,
         )
         elapsed = time.time() - start_time
         return response.choices[0].message.content, elapsed, None
-    except Exception as e:
-        elapsed = time.time() - start_time
-        return None, elapsed, str(e)
+    except InferenceError as e:
+        return None, time.time() - start_time, str(e)
+    except Exception as e:  # noqa: BLE001 - surfaced to the UI
+        return None, time.time() - start_time, friendly_error(e)
 
 
 def battle(prompt: str, model1_name: str, model2_name: str) -> tuple:
     """Run a battle between two models."""
     if not prompt.strip():
-        return "Please enter a prompt.", "", "", "", ""
+        return "Please enter a prompt.", "", "", "", "", ("", "")
 
     model1_id = MODELS[model1_name]["id"]
     model2_id = MODELS[model2_name]["id"]
@@ -134,17 +137,20 @@ def battle(prompt: str, model1_name: str, model2_name: str) -> tuple:
     info1 = f"**{model1_name}**\n{MODELS[model1_name]['description']}\n*Strengths: {MODELS[model1_name]['strengths']}*"
     info2 = f"**{model2_name}**\n{MODELS[model2_name]['description']}\n*Strengths: {MODELS[model2_name]['strengths']}*"
 
-    return output1, output2, info1, info2, prompt
+    # Return the battled model names so votes attribute to the models that
+    # actually produced these responses, not whatever the dropdowns show later.
+    return output1, output2, info1, info2, prompt, (model1_name, model2_name)
 
 
 def vote_model(winner: str, loser: str, prompt: str) -> str:
     """Record a vote for the winning model."""
-    if not prompt:
+    if not prompt or not winner or winner not in vote_counts:
         return "Run a battle first before voting!"
 
     vote_counts[winner]["wins"] += 1
     vote_counts[winner]["battles"] += 1
-    vote_counts[loser]["battles"] += 1
+    if loser in vote_counts:
+        vote_counts[loser]["battles"] += 1
 
     return f"Voted for **{winner}**! Total wins: {vote_counts[winner]['wins']}/{vote_counts[winner]['battles']}"
 
@@ -211,8 +217,9 @@ with gr.Blocks(title="AI Model Arena", theme=gr.themes.Soft()) as demo:
     *All models run via HuggingFace Inference API*
     """)
 
-    # Hidden state for current prompt
+    # Hidden state for the current battle: prompt + the two models that ran it
     current_prompt = gr.State("")
+    current_models = gr.State(("", ""))
 
     with gr.Row():
         with gr.Column(scale=2):
@@ -296,7 +303,14 @@ with gr.Blocks(title="AI Model Arena", theme=gr.themes.Soft()) as demo:
     battle_btn.click(
         fn=battle,
         inputs=[prompt_input, model1_dropdown, model2_dropdown],
-        outputs=[model1_output, model2_output, model1_info, model2_info, current_prompt],
+        outputs=[
+            model1_output,
+            model2_output,
+            model1_info,
+            model2_info,
+            current_prompt,
+            current_models,
+        ],
     )
 
     example_btn.click(
@@ -311,8 +325,8 @@ with gr.Blocks(title="AI Model Arena", theme=gr.themes.Soft()) as demo:
     )
 
     vote1_btn.click(
-        fn=lambda m1, m2, p: vote_model(m1, m2, p),
-        inputs=[model1_dropdown, model2_dropdown, current_prompt],
+        fn=lambda models, p: vote_model(models[0], models[1], p),
+        inputs=[current_models, current_prompt],
         outputs=[vote_result],
     ).then(
         fn=get_leaderboard,
@@ -320,8 +334,8 @@ with gr.Blocks(title="AI Model Arena", theme=gr.themes.Soft()) as demo:
     )
 
     vote2_btn.click(
-        fn=lambda m1, m2, p: vote_model(m2, m1, p),
-        inputs=[model1_dropdown, model2_dropdown, current_prompt],
+        fn=lambda models, p: vote_model(models[1], models[0], p),
+        inputs=[current_models, current_prompt],
         outputs=[vote_result],
     ).then(
         fn=get_leaderboard,

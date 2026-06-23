@@ -23,7 +23,7 @@ A curated dataset of academic paper metadata sourced from [arXiv](https://arxiv.
 
 ### Overview
 
-This dataset contains metadata for **2,500+** recently published papers across five core arXiv categories at the intersection of computer science and machine learning:
+This dataset contains metadata for **up to ~2,500 papers** (fewer after cross-listing de-duplication) recently published across five core arXiv categories at the intersection of computer science and machine learning:
 
 | Category  | Description                         |
 |-----------|-------------------------------------|

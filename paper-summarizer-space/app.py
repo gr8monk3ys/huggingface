@@ -11,14 +11,14 @@ Author: Lorenzo Scaturchio (gr8monk3ys)
 License: MIT
 """
 
-import os
 import re
 import logging
 from typing import Optional
 
 import fitz  # PyMuPDF
 import gradio as gr
-from huggingface_hub import InferenceClient
+
+from hf_client import make_client, with_retry
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -44,7 +44,7 @@ COMBINE_SUMMARY_MAX_LENGTH = 300
 # Use HuggingFace Inference API (no local model loading - saves memory)
 # ---------------------------------------------------------------------------
 logger.info("Initializing HuggingFace Inference Client for: %s", MODEL_NAME)
-client = InferenceClient(model=MODEL_NAME)
+client = make_client(MODEL_NAME)
 logger.info("Inference client ready.")
 
 
@@ -205,7 +205,8 @@ def summarize_text(text: str) -> str:
     min_len = min(SUMMARY_MIN_LENGTH, max_len - 10)
 
     try:
-        result = client.summarization(
+        result = with_retry(
+            client.summarization,
             text,
             parameters={
                 "max_length": max_len,
@@ -248,7 +249,8 @@ def generate_full_summary(text: str) -> str:
     min_len = min(SUMMARY_MIN_LENGTH, max_len - 10)
 
     try:
-        result = client.summarization(
+        result = with_retry(
+            client.summarization,
             combined,
             parameters={
                 "max_length": max_len,

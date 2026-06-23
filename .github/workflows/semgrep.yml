@@ -6,15 +6,16 @@ on:
       - "**"
   pull_request:
 
-permissions: read-all
+permissions:
+  contents: read
 
 jobs:
   semgrep:
     runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
       - name: Run Semgrep
-        uses: returntocorp/semgrep-action@713efdd345f3035192eaa63f56867b88e63e4e5d
-        with:
-          config: auto
+        run: semgrep scan --config auto --error

@@ -3,9 +3,11 @@ Optical Illusion Generator - Create mesmerizing visual illusions with AI.
 Generate spiral illusions, hidden images, and mind-bending patterns.
 """
 
-import gradio as gr
-from huggingface_hub import InferenceClient
 import random
+
+import gradio as gr
+
+from hf_client import InferenceError, make_client, with_retry
 
 # ---------------------------------------------------------------------------
 # Illusion Types and Patterns
@@ -69,17 +71,14 @@ SUBJECTS = [
     "a hidden face",
 ]
 
-INTENSITY_LEVELS = {
-    "Subtle": 0.3,
-    "Medium": 0.6,
-    "Intense": 0.9,
-}
+INTENSITY_LEVELS = ["Subtle", "Medium", "Intense"]
 
 # ---------------------------------------------------------------------------
 # Initialize Client
 # ---------------------------------------------------------------------------
 
-client = InferenceClient()
+IMAGE_MODEL = "black-forest-labs/FLUX.1-schnell"
+client = make_client()
 
 # ---------------------------------------------------------------------------
 # Core Functions
@@ -129,14 +128,11 @@ Highly detailed, mesmerizing, hypnotic, professional quality optical illusion ar
 The illusion effect should be clearly visible and striking."""
 
     try:
-        # Generate image using FLUX
-        image = client.text_to_image(
-            prompt,
-            model="black-forest-labs/FLUX.1-schnell",
-        )
+        image = with_retry(client.text_to_image, prompt, model=IMAGE_MODEL)
+    except InferenceError as e:
+        return None, str(e)
 
-        # Create description
-        description = f"""## {illusion_type} Generated!
+    description = f"""## {illusion_type} Generated!
 
 **Subject:** {final_subject}
 **Intensity:** {intensity}
@@ -157,13 +153,7 @@ The illusion effect should be clearly visible and striking."""
 
 *Generated with FLUX.1-schnell*
 """
-        return image, description
-
-    except Exception as e:
-        error_msg = str(e)
-        if "rate limit" in error_msg.lower():
-            return None, "Rate limited. Please wait a moment and try again."
-        return None, f"Generation failed: {error_msg}"
+    return image, description
 
 
 def get_specific_tip(illusion_type: str) -> str:
@@ -185,7 +175,7 @@ def random_illusion():
     """Generate random illusion settings."""
     illusion_type = random.choice(list(ILLUSION_TYPES.keys()))
     subject = random.choice(SUBJECTS)
-    intensity = random.choice(list(INTENSITY_LEVELS.keys()))
+    intensity = random.choice(INTENSITY_LEVELS)
     color = random.choice(["Psychedelic", "Monochrome", "Neon", "Gold & Black"])
     return illusion_type, subject, "", intensity, color
 
@@ -234,7 +224,7 @@ with gr.Blocks(title="Optical Illusion Generator", theme=gr.themes.Soft()) as de
             )
 
             intensity_dropdown = gr.Dropdown(
-                choices=list(INTENSITY_LEVELS.keys()),
+                choices=INTENSITY_LEVELS,
                 value="Medium",
                 label="Effect Intensity",
             )

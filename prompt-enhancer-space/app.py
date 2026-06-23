@@ -5,14 +5,15 @@ Supports image generation, text generation, and code generation prompts.
 """
 
 import gradio as gr
-from huggingface_hub import InferenceClient
+
+from hf_client import InferenceError, make_client, with_retry
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
 MODEL_ID = "mistralai/Mistral-7B-Instruct-v0.3"
-client = InferenceClient(MODEL_ID)
+client = make_client(MODEL_ID)
 
 PROMPT_TYPES = {
     "Image Generation": {
@@ -124,30 +125,29 @@ def enhance_prompt(
 
     system_prompt = config["system_prompt"] + level_instructions.get(enhancement_level, "")
 
-    # Build the conversation
-    messages = f"<s>[INST] {system_prompt}\n\nBasic prompt to enhance:\n{basic_prompt} [/INST]"
-
     try:
-        response = client.text_generation(
-            messages,
-            max_new_tokens=800,
+        completion = with_retry(
+            client.chat_completion,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Basic prompt to enhance:\n{basic_prompt}"},
+            ],
+            max_tokens=800,
             temperature=creativity,
-            do_sample=True,
             top_p=0.9,
         )
-
-        enhanced = response.strip()
+        enhanced = completion.choices[0].message.content.strip()
 
         # Generate tips based on prompt type
-        tips = generate_tips(prompt_type, enhanced)
+        tips = generate_tips(prompt_type)
 
         return enhanced, tips
 
-    except Exception as e:
-        return f"Error enhancing prompt: {str(e)}", ""
+    except InferenceError as e:
+        return f"{e}", ""
 
 
-def generate_tips(prompt_type: str, enhanced_prompt: str) -> str:
+def generate_tips(prompt_type: str) -> str:
     """Generate helpful tips based on the prompt type."""
 
     tips_map = {

@@ -3,9 +3,11 @@ Style Mixer - Blend artistic styles using AI.
 Create unique art by mixing different visual styles.
 """
 
-import gradio as gr
-from huggingface_hub import InferenceClient
 import random
+
+import gradio as gr
+
+from hf_client import InferenceError, make_client, with_retry
 
 # ---------------------------------------------------------------------------
 # Style Definitions
@@ -36,7 +38,7 @@ SUBJECTS = [
     "a mysterious forest",
     "a peaceful ocean sunset",
     "a cozy coffee shop",
-    "a ancient temple",
+    "an ancient temple",
     "a futuristic spacecraft",
     "a beautiful garden",
     "a magical castle",
@@ -46,7 +48,8 @@ SUBJECTS = [
 # Initialize Client
 # ---------------------------------------------------------------------------
 
-client = InferenceClient()
+IMAGE_MODEL = "black-forest-labs/FLUX.1-schnell"
+client = make_client()
 
 # ---------------------------------------------------------------------------
 # Core Functions
@@ -65,16 +68,21 @@ def mix_styles(style1: str, style2: str, blend_ratio: float, subject: str, custo
     style1_desc = ART_STYLES.get(style1, style1)
     style2_desc = ART_STYLES.get(style2, style2)
 
-    # Create blended prompt based on ratio
+    # Create the blended prompt. Weighting is applied in three discrete bands,
+    # so the displayed percentages reflect the band actually used rather than
+    # the raw slider value (which would diverge from the real prompt weights).
     if blend_ratio <= 0.3:
         blend_desc = f"primarily in {style1} style with subtle hints of {style2}"
         style_weight = f"({style1_desc}:1.3), ({style2_desc}:0.5)"
+        pct1, pct2 = 70, 30
     elif blend_ratio >= 0.7:
         blend_desc = f"primarily in {style2} style with subtle hints of {style1}"
         style_weight = f"({style1_desc}:0.5), ({style2_desc}:1.3)"
+        pct1, pct2 = 30, 70
     else:
         blend_desc = f"harmoniously blending {style1} and {style2} styles"
         style_weight = f"({style1_desc}:1.0), ({style2_desc}:1.0)"
+        pct1, pct2 = 50, 50
 
     # Construct the prompt
     prompt = f"""A stunning artistic rendering of {final_subject}, {blend_desc}.
@@ -82,38 +90,29 @@ def mix_styles(style1: str, style2: str, blend_ratio: float, subject: str, custo
 Style fusion: {style_weight}
 
 The artwork masterfully combines elements from both styles, creating a unique and visually striking piece.
-High quality, detailed, professional artwork, museum quality, 4k resolution."""
+High quality, detailed, professional artwork, museum quality."""
 
     try:
-        # Generate image using FLUX
-        image = client.text_to_image(
-            prompt,
-            model="black-forest-labs/FLUX.1-schnell",
-        )
+        image = with_retry(client.text_to_image, prompt, model=IMAGE_MODEL)
+    except InferenceError as e:
+        return None, str(e)
 
-        # Create description
-        description = f"""## Style Mix Complete!
+    description = f"""## Style Mix Complete!
 
 **Subject:** {final_subject}
 
 **Style Blend:**
-- **{style1}** ({int((1-blend_ratio)*100)}%): {ART_STYLES.get(style1, style1)[:50]}...
-- **{style2}** ({int(blend_ratio*100)}%): {ART_STYLES.get(style2, style2)[:50]}...
+- **{style1}** ({pct1}%): {style1_desc}
+- **{style2}** ({pct2}%): {style2_desc}
 
 **Prompt Used:**
 ```
-{prompt[:500]}...
+{prompt}
 ```
 
 *Try adjusting the blend ratio or mixing different styles!*
 """
-        return image, description
-
-    except Exception as e:
-        error_msg = str(e)
-        if "rate limit" in error_msg.lower():
-            return None, "Rate limited. Please wait a moment and try again."
-        return None, f"Generation failed: {error_msg}"
+    return image, description
 
 
 def random_mix():

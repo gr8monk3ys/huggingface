@@ -1,3 +1,4 @@
 gradio>=5.31.0,<6.0.0
 sentence-transformers>=2.2.0,<4.0.0
+datasets>=2.14.0,<4.0.0
 numpy>=1.20.0,<3.0.0

@@ -11,6 +11,7 @@ huggingface/
 ├── paper-classifier-model/    # Model: DistilBERT arXiv paper classifier
 ├── paper-summarizer-space/    # Space: BART-Large-CNN summarizer (HF Inference API)
 ├── paper-recommender-space/   # Space: related-paper recommender via embedding similarity
+├── research-assistant-space/  # Space: agentic RAG (plan -> retrieve -> cited answer) over the papers dataset
 # --- Resume & Career Tools ---
 ├── resume-section-classifier/ # Model: DistilBERT resume-section classifier (synthetic data)
 ├── resume-analyzer-space/     # Space: resume <-> job-description semantic matcher
@@ -21,7 +22,7 @@ huggingface/
 ├── prompt-enhancer-space/     # Space: prompt rewriter via Mistral-7B (HF Inference API)
 ├── model-arena-space/         # Space: side-by-side LLM comparison + voting
 ├── ml-interview-space/        # Space: ML/DS interview question practice
-├── model-selector-space/      # Space: find HF models for a task
+├── model-selector-space/      # Space: find HF models for a task (live Hub query + fallback)
 # --- Generative & Data Exploration ---
 ├── dataset-explorer-space/    # Space: visualize any HF dataset
 ├── illusion-generator-space/  # Space: optical-illusion image generator (FLUX.1-schnell)

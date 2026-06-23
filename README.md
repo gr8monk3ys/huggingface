@@ -11,7 +11,8 @@ A collection of end-to-end machine learning projects published on the HuggingFac
 | [academic-papers-dataset](./academic-papers-dataset) | Dataset | arXiv paper metadata across cs.AI, cs.CL, cs.CV, cs.LG, and stat.ML |
 | [paper-classifier-model](./paper-classifier-model) | Model | DistilBERT fine-tuned to classify arXiv papers by category |
 | [paper-summarizer-space](./paper-summarizer-space) | Space | Summarizes academic papers (PDF or text) using BART-Large-CNN via the HuggingFace Inference API |
-| [paper-recommender-space](./paper-recommender-space) | Space | Recommends related papers by embedding similarity |
+| [paper-recommender-space](./paper-recommender-space) | Space | Recommends related papers by embedding similarity over the published arXiv dataset |
+| [research-assistant-space](./research-assistant-space) | Space | Agentic RAG that plans queries, retrieves papers, and writes cited answers (ties the paper projects together) |
 
 ### Resume & Career Tools
 
@@ -34,7 +35,7 @@ A collection of end-to-end machine learning projects published on the HuggingFac
 | [prompt-enhancer-space](./prompt-enhancer-space) | Space | Rewrites and enriches prompts using Mistral-7B via the HuggingFace Inference API |
 | [model-arena-space](./model-arena-space) | Space | Compares two LLMs side-by-side on the same prompt with response voting |
 | [ml-interview-space](./ml-interview-space) | Space | Practice ML/DS interview questions with quiz and browse modes |
-| [model-selector-space](./model-selector-space) | Space | Helps find HuggingFace models suited to a given task |
+| [model-selector-space](./model-selector-space) | Space | Finds top HuggingFace models for a task via a live Hub query (with curated fallback) |
 
 ### Generative & Data Exploration
 
@@ -69,7 +70,7 @@ pip install -r requirements.txt
 python train.py
 ```
 
-The LLM and image Spaces (code-explainer, prompt-enhancer, model-arena, illusion-generator, style-mixer, paper-summarizer) call the **HuggingFace Inference API** and require an `HF_TOKEN` secret (a token with inference access) to be set in Space Settings → Secrets. For the FLUX image Spaces, the token also needs available inference credits/quota.
+The LLM and image Spaces (code-explainer, prompt-enhancer, model-arena, research-assistant, illusion-generator, style-mixer, paper-summarizer) call the **HuggingFace Inference API** and require an `HF_TOKEN` secret (a token with inference access) to be set in Space Settings → Secrets. For the FLUX image Spaces, the token also needs available inference credits/quota.
 
 ## License
 

@@ -4,7 +4,7 @@ emoji: ⚔️
 colorFrom: red
 colorTo: yellow
 sdk: gradio
-sdk_version: 5.9.1
+sdk_version: 5.31.0
 python_version: "3.10"
 app_file: app.py
 pinned: false
@@ -69,6 +69,10 @@ Different models have different strengths:
 - All models accessed via HuggingFace Inference API
 - Response times measured for comparison
 - Leaderboard persists during Space session
+
+## Configuration
+
+This Space calls the **HuggingFace Inference API** to run every model. It requires an `HF_TOKEN` secret — a token with inference access — set in **Space Settings → Secrets**. Without it, battles will fail.
 
 ## License
 

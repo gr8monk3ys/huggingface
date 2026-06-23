@@ -4,7 +4,7 @@ emoji: ✨
 colorFrom: purple
 colorTo: pink
 sdk: gradio
-sdk_version: 5.9.1
+sdk_version: 5.31.0
 python_version: "3.10"
 app_file: app.py
 pinned: false
@@ -67,13 +67,17 @@ Transform your basic prompts into powerful, detailed prompts that get better AI 
 
 | Component | Technology |
 |-----------|------------|
-| Web Framework | Gradio 5.9.1 |
+| Web Framework | Gradio 5.31.0 |
 | AI Model | Mistral-7B via HuggingFace Inference API |
 | Enhancement | Custom prompt engineering |
 
 ## Inspiration
 
 Inspired by the success of [MagicPrompt-Stable-Diffusion](https://huggingface.co/spaces/Gustavosta/MagicPrompt-Stable-Diffusion) (2,000+ likes), extended to support all types of AI prompts.
+
+## Configuration
+
+This Space calls the **HuggingFace Inference API** (Mistral-7B). It requires an `HF_TOKEN` secret — a token with inference access — set in **Space Settings → Secrets**. Without it, prompt enhancement will fail.
 
 ## License
 

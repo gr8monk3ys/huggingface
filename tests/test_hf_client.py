@@ -12,14 +12,11 @@ import pytest
 import hf_client
 
 ROOT = Path(__file__).resolve().parent.parent
-SPACES_WITH_HELPER = [
-    "code-explainer-space",
-    "prompt-enhancer-space",
-    "model-arena-space",
-    "style-mixer-space",
-    "illusion-generator-space",
-    "paper-summarizer-space",
-]
+
+# Discovered rather than hardcoded: a hardcoded list silently excludes any new
+# Space from the drift check, which is exactly how research-assistant-space
+# shipped an unguarded copy.
+SPACES_WITH_HELPER = sorted(p.parent.name for p in ROOT.glob("*/hf_client.py"))
 
 
 def test_friendly_error_rate_limit():
@@ -32,6 +29,39 @@ def test_friendly_error_loading():
 
 def test_friendly_error_auth():
     assert "hf_token" in hf_client.friendly_error(Exception("401 Unauthorized")).lower()
+
+
+# The message HuggingFace actually returns once the free monthly allowance is
+# spent. It must not be reported as a bad token: the token is fine.
+REAL_402 = (
+    "402 Client Error: Payment Required. You have exceeded your monthly "
+    "included credits for Inference Providers. Subscribe to PRO for more."
+)
+
+
+def test_friendly_error_out_of_credits_is_not_an_auth_problem():
+    msg = hf_client.friendly_error(Exception(REAL_402)).lower()
+    assert "credits" in msg
+    assert "set a valid hf_token" not in msg
+
+
+def test_credits_error_mentioning_quota_beats_the_rate_limit_branch():
+    exc = Exception("402 Payment Required: quota exceeded")
+    msg = hf_client.friendly_error(exc).lower()
+    assert "credits" in msg
+    assert "rate-limited" not in msg
+
+
+def test_billing_errors_are_never_retried():
+    attempts = {"n": 0}
+
+    def broke():
+        attempts["n"] += 1
+        raise RuntimeError(REAL_402)
+
+    with pytest.raises(hf_client.InferenceError):
+        hf_client.with_retry(broke, retries=5, sleep=lambda _s: None)
+    assert attempts["n"] == 1
 
 
 def test_friendly_error_generic():

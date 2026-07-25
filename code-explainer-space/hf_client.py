@@ -42,6 +42,17 @@ _TRANSIENT_MARKERS = (
     "timed out",
 )
 
+# Billing failures are permanent until the account changes -- retrying just
+# delays the error. These win over _TRANSIENT_MARKERS, which would otherwise
+# match a credits message that happens to mention "quota".
+_PERMANENT_MARKERS = (
+    "402",
+    "payment required",
+    "included credits",
+    "subscribe to pro",
+    "exceeded your monthly",
+)
+
 
 class InferenceError(RuntimeError):
     """Raised when an inference call fails after exhausting retries."""
@@ -67,12 +78,23 @@ def make_client(model: Optional[str] = None, timeout: int = DEFAULT_TIMEOUT):
 
 def _is_transient(exc: Exception) -> bool:
     msg = str(exc).lower()
+    if any(marker in msg for marker in _PERMANENT_MARKERS):
+        return False
     return any(marker in msg for marker in _TRANSIENT_MARKERS)
 
 
 def friendly_error(exc: Exception) -> str:
     """Map a raw inference exception to an actionable, user-facing message."""
     msg = str(exc).lower()
+    # Checked before rate limiting: a credits message often mentions "quota"
+    # too, and before auth: the token is valid, so telling the user to replace
+    # it sends them to fix something that is not broken.
+    if any(k in msg for k in _PERMANENT_MARKERS):
+        return (
+            "This account is out of HuggingFace Inference credits, so the request "
+            "was declined. The HF_TOKEN is valid -- the monthly free allowance is "
+            "used up. Wait for the monthly reset or subscribe to PRO for more."
+        )
     if any(k in msg for k in ("rate limit", "429", "too many requests", "quota")):
         return (
             "The model is rate-limited right now. Wait a moment and try again, or "
@@ -80,7 +102,7 @@ def friendly_error(exc: Exception) -> str:
         )
     if any(k in msg for k in ("currently loading", "loading", "503", "starting")):
         return "The model is warming up (cold start). Please try again in ~20 seconds."
-    if any(k in msg for k in ("401", "unauthorized", "402", "authentication")):
+    if any(k in msg for k in ("401", "unauthorized", "authentication")):
         return (
             "Inference was rejected for authentication. Set a valid HF_TOKEN secret "
             "in the Space settings."

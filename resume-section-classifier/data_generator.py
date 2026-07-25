@@ -851,19 +851,39 @@ def save_to_csv(dataset: list[dict], path: str) -> None:
 
 
 def load_as_hf_dataset(dataset: list[dict]):
-    """Convert to HuggingFace Dataset with train/val/test splits."""
-    from datasets import Dataset, DatasetDict
+    """Convert to HuggingFace Dataset with stratified train/val/test splits.
+
+    ``train_test_split(stratify_by_column=...)`` only accepts a ``ClassLabel``
+    column, so the label is cast for the split and decoded back to its string
+    name afterwards -- ``train.py`` looks labels up by name via ``label2id``.
+    """
+    from datasets import ClassLabel, Dataset, DatasetDict, Features, Value
 
     ds = Dataset.from_list(dataset)
+    class_label = ClassLabel(names=sorted({row["label"] for row in dataset}))
+    ds = ds.cast_column("label", class_label)
 
-    # 80/10/10 split
+    # 80/10/10 split, stratified at both steps
     train_test = ds.train_test_split(test_size=0.2, seed=42, stratify_by_column="label")
     val_test = train_test["test"].train_test_split(test_size=0.5, seed=42, stratify_by_column="label")
 
-    return DatasetDict({
+    # Decode ids back to names. Casting ClassLabel -> string does NOT do this
+    # (it stringifies the ids, giving "0"/"1"), and mapping into a column that
+    # is still typed ClassLabel silently re-encodes the names straight back to
+    # ids -- hence int2str plus an explicit output schema.
+    string_features = Features({"text": Value("string"), "label": Value("string")})
+
+    def to_label_name(batch):
+        return {"label": class_label.int2str(batch["label"])}
+
+    splits = {
         "train": train_test["train"],
         "validation": val_test["train"],
         "test": val_test["test"],
+    }
+    return DatasetDict({
+        name: split.map(to_label_name, batched=True, features=string_features)
+        for name, split in splits.items()
     })
 
 

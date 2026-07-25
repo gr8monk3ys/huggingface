@@ -7,6 +7,7 @@ portfolio's papers dataset, embedding model, and shared inference helper.
 """
 
 import logging
+from functools import lru_cache
 
 import gradio as gr
 from sentence_transformers import SentenceTransformer
@@ -22,15 +23,23 @@ logger = logging.getLogger(__name__)
 
 LLM_MODEL = "mistralai/Mistral-7B-Instruct-v0.3"
 
+
 # ---------------------------------------------------------------------------
 # Startup: embedding model, corpus, retriever, LLM client
 # ---------------------------------------------------------------------------
-logger.info("Loading embedding model ...")
-embedder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+# Deferred to the first question. Loading the embedder and indexing the corpus
+# at import meant a failed model download killed the container before Gradio
+# could bind, so visitors got a bare "Runtime error" page. The corpus load
+# below stays eager -- it already falls back to a built-in list, and
+# SOURCE_NOTE is needed to render the UI.
+@lru_cache(maxsize=1)
+def _get_embedder():
+    logger.info("Loading embedding model ...")
+    return SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
 
 def _encode(texts):
-    return embedder.encode(texts, convert_to_numpy=True)
+    return _get_embedder().encode(texts, convert_to_numpy=True)
 
 
 _live = load_papers()
@@ -41,7 +50,12 @@ else:
     PAPERS = FALLBACK_PAPERS
     SOURCE_NOTE = f"{len(PAPERS)} built-in landmark papers (live dataset unavailable)"
 
-retriever = Retriever(PAPERS, _encode)
+
+@lru_cache(maxsize=1)
+def _get_retriever():
+    return Retriever(PAPERS, _encode)
+
+
 logger.info("Indexed corpus: %s", SOURCE_NOTE)
 
 client = make_client(LLM_MODEL)
@@ -74,7 +88,7 @@ def research(question: str):
     if not question.strip():
         return "Please enter a research question.", ""
     try:
-        result = run_agent(question, retriever.search, _chat)
+        result = run_agent(question, _get_retriever().search, _chat)
     except Exception as exc:  # pragma: no cover - defensive UI guard
         logger.exception("Agent run failed")
         return f"Something went wrong: {exc}", ""

@@ -7,6 +7,7 @@ cosine similarity (see core.py).
 """
 
 import logging
+from functools import lru_cache
 
 import gradio as gr
 from sentence_transformers import SentenceTransformer
@@ -25,15 +26,23 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 # ---------------------------------------------------------------------------
 # Load model + corpus (at startup)
 # ---------------------------------------------------------------------------
-logger.info("Loading embedding model ...")
-model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+# The model download and the corpus embedding are deferred to the first search.
+# Doing them at import meant any failure killed the container before Gradio
+# could bind, so visitors saw a bare "Runtime error" rather than the UI saying
+# what went wrong. The corpus load below stays eager: it is small and already
+# falls back to a built-in list, and SOURCE_NOTE is needed to render the page.
+@lru_cache(maxsize=1)
+def _get_model():
+    logger.info("Loading embedding model ...")
+    return SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
 
 def _encode(texts):
-    return model.encode(texts, convert_to_numpy=True)
+    return _get_model().encode(texts, convert_to_numpy=True)
 
 
 logger.info("Loading paper corpus ...")
@@ -43,13 +52,15 @@ if _live:
     SOURCE_NOTE = f"{len(PAPERS):,} papers loaded from `{DATASET_ID}`"
 else:
     PAPERS = FALLBACK_PAPERS
-    SOURCE_NOTE = (
-        f"{len(PAPERS)} built-in landmark papers (live dataset unavailable)"
-    )
+    SOURCE_NOTE = f"{len(PAPERS)} built-in landmark papers (live dataset unavailable)"
 logger.info("Corpus ready: %s", SOURCE_NOTE)
 
-paper_embeddings = build_index(PAPERS, _encode)
-logger.info("Indexed %d papers.", len(PAPERS))
+
+@lru_cache(maxsize=1)
+def _get_index():
+    index = build_index(PAPERS, _encode)
+    logger.info("Indexed %d papers.", len(PAPERS))
+    return index
 
 
 # ---------------------------------------------------------------------------
@@ -63,7 +74,7 @@ def recommend_papers(query: str, category: str, num_results: int) -> str:
         results = recommend(
             query,
             PAPERS,
-            paper_embeddings,
+            _get_index(),
             _encode,
             CATEGORIES.get(category),
             int(num_results),

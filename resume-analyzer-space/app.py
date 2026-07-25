@@ -11,6 +11,7 @@ License: MIT
 
 import re
 import logging
+from functools import lru_cache
 from typing import Optional
 
 import fitz  # PyMuPDF
@@ -143,11 +144,17 @@ Nice to Have
 """
 
 # ---------------------------------------------------------------------------
-# Model loading (cached at module level for the HF Space)
+# Model loading (deferred to first use, then cached)
 # ---------------------------------------------------------------------------
-logger.info("Loading sentence-transformer model: %s", MODEL_NAME)
-_model = SentenceTransformer(MODEL_NAME)
-logger.info("Model loaded successfully.")
+# Loading at import cost the Space its UI: a failed download (rate limit, cold
+# network) raised during module execution, so the container died and visitors
+# got a bare "Runtime error" instead of a page that could explain itself.
+@lru_cache(maxsize=1)
+def _get_model() -> SentenceTransformer:
+    logger.info("Loading sentence-transformer model: %s", MODEL_NAME)
+    model = SentenceTransformer(MODEL_NAME)
+    logger.info("Model loaded successfully.")
+    return model
 
 
 # =========================================================================
@@ -171,7 +178,7 @@ def extract_text_from_pdf(pdf_path: str) -> str:
 
 def compute_semantic_similarity(text_a: str, text_b: str) -> float:
     """Return cosine similarity (0-1) between two texts using the sentence-transformer."""
-    embeddings = _model.encode([text_a, text_b], convert_to_numpy=True)
+    embeddings = _get_model().encode([text_a, text_b], convert_to_numpy=True)
     similarity = cosine_similarity([embeddings[0]], [embeddings[1]])[0][0]
     return float(np.clip(similarity, 0.0, 1.0))
 

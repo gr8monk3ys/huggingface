@@ -23,7 +23,7 @@ A curated dataset of academic paper metadata sourced from [arXiv](https://arxiv.
 
 ### Overview
 
-This dataset contains metadata for **up to ~2,500 papers** (fewer after cross-listing de-duplication) recently published across five core arXiv categories at the intersection of computer science and machine learning:
+The published snapshot (collected **2026-07-12**) contains metadata for **2,019 papers** — 2,500 were fetched and 481 cross-listed duplicates removed — across five core arXiv categories at the intersection of computer science and machine learning:
 
 | Category  | Description                         |
 |-----------|-------------------------------------|
@@ -61,12 +61,15 @@ The collection script is fully reproducible: see [`create_dataset.py`](create_da
 
 ### Splits
 
-| Split   | Approximate Size |
-|---------|------------------|
-| `train` | ~90 %            |
-| `test`  | ~10 %            |
+| Split   | Rows  | Share |
+|---------|-------|-------|
+| `train` | 1,817 | 90 %  |
+| `test`  | 202   | 10 %  |
+| **Total** | **2,019** | |
 
 The split is performed with a fixed random seed (`42`) for reproducibility.
+Row counts describe the 2026-07-12 snapshot; re-running the collection script
+on a different date will produce a different corpus (see Limitations).
 
 ## Intended Uses
 

@@ -65,9 +65,9 @@ class PaperClassifier:
                 device = "cpu"
         self.device = torch.device(device)
 
-        # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure
         # False positive: the rule matches "token" inside "tokenizer".
         # model_path is a local directory or a public Hub id, not a credential.
+        # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure
         logger.info("Loading tokenizer from: %s", model_path)
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
 

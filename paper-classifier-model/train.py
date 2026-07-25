@@ -427,6 +427,9 @@ def main() -> None:
     logger.info("Number of labels: %d", num_labels)
 
     # Tokenizer
+    # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure
+    # False positive: the rule matches "token" inside "tokenizer". MODEL_NAME is
+    # a public checkpoint id ("distilbert-base-uncased"), not a credential.
     logger.info("Loading tokenizer: %s", MODEL_NAME)
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
     tokenized_dataset = tokenize_dataset(dataset, tokenizer, args.max_length)

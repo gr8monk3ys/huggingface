@@ -84,6 +84,8 @@ def ensure_repo(api, repo_id, repo_type, dry_run) -> bool:
     A repo that genuinely cannot be created is reported and skipped rather than
     aborting the run, so one paywalled Space doesn't block the other projects.
     """
+    from huggingface_hub.errors import HfHubHTTPError
+
     if dry_run:
         return True
     if api.repo_exists(repo_id=repo_id, repo_type=repo_type):
@@ -96,7 +98,7 @@ def ensure_repo(api, repo_id, repo_type, dry_run) -> bool:
         api.create_repo(**kwargs)
         print(f"  {repo_type}:{repo_id}  created")
         return True
-    except Exception as exc:
+    except HfHubHTTPError as exc:
         first_line = str(exc).split("\n")[0]
         print(f"  !! cannot create {repo_type}:{repo_id} -- skipped ({first_line})")
         return False
@@ -148,13 +150,14 @@ def main():
     args = ap.parse_args()
 
     from huggingface_hub import HfApi
+    from huggingface_hub.errors import HfHubHTTPError, LocalTokenNotFoundError
 
     api = HfApi()
     if not args.dry_run:
         try:
             user = api.whoami()["name"]
-        except Exception as exc:
-            sys.exit(f"Not authenticated ({exc}). Run `hf auth login` first.")
+        except (HfHubHTTPError, LocalTokenNotFoundError) as exc:
+            sys.exit(f"Not authenticated ({exc}). Run `hf auth login --force` first.")
         if user != NAMESPACE:
             sys.exit(f"Logged in as {user!r}, expected {NAMESPACE!r} -- aborting.")
 

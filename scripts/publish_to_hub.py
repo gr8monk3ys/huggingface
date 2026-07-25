@@ -73,14 +73,33 @@ def project_files(folder: Path):
     ]
 
 
-def ensure_repo(api, repo_id, repo_type, dry_run):
-    """Create the repo if it does not exist yet (no-op when it does)."""
+def ensure_repo(api, repo_id, repo_type, dry_run) -> bool:
+    """Make sure the repo exists. Returns False if it can't be used.
+
+    Checks existence before attempting creation: ``create_repo`` still POSTs to
+    /api/repos/create even with ``exist_ok=True``, and the Hub now answers that
+    with 402 for Gradio Spaces on the free tier -- so calling it unconditionally
+    fails on repos that are already there and perfectly writable.
+
+    A repo that genuinely cannot be created is reported and skipped rather than
+    aborting the run, so one paywalled Space doesn't block the other projects.
+    """
     if dry_run:
-        return
-    kwargs = {"repo_id": repo_id, "repo_type": repo_type, "exist_ok": True}
+        return True
+    if api.repo_exists(repo_id=repo_id, repo_type=repo_type):
+        return True
+
+    kwargs = {"repo_id": repo_id, "repo_type": repo_type}
     if repo_type == "space":
         kwargs["space_sdk"] = "gradio"
-    api.create_repo(**kwargs)
+    try:
+        api.create_repo(**kwargs)
+        print(f"  {repo_type}:{repo_id}  created")
+        return True
+    except Exception as exc:
+        first_line = str(exc).split("\n")[0]
+        print(f"  !! cannot create {repo_type}:{repo_id} -- skipped ({first_line})")
+        return False
 
 
 def push_project(api, repo_id, repo_type, folder, dry_run):
@@ -143,14 +162,16 @@ def main():
         print("\n== Spaces ==")
         for folder, repo in SPACES.items():
             repo_id = f"{NAMESPACE}/{repo}"
-            ensure_repo(api, repo_id, "space", args.dry_run)
+            if not ensure_repo(api, repo_id, "space", args.dry_run):
+                continue
             push_project(api, repo_id, "space", ROOT / folder, args.dry_run)
 
     if args.only in (None, "models"):
         print("\n== Models ==")
         for folder, (repo, weights) in MODELS.items():
             repo_id = f"{NAMESPACE}/{repo}"
-            ensure_repo(api, repo_id, "model", args.dry_run)
+            if not ensure_repo(api, repo_id, "model", args.dry_run):
+                continue
             push_project(api, repo_id, "model", ROOT / folder, args.dry_run)
             push_artifacts(api, repo_id, "model", ROOT / folder / weights, args.dry_run)
 
@@ -158,7 +179,8 @@ def main():
         print("\n== Datasets ==")
         for folder, (repo, data_dir) in DATASETS.items():
             repo_id = f"{NAMESPACE}/{repo}"
-            ensure_repo(api, repo_id, "dataset", args.dry_run)
+            if not ensure_repo(api, repo_id, "dataset", args.dry_run):
+                continue
             push_project(api, repo_id, "dataset", ROOT / folder, args.dry_run)
             push_artifacts(
                 api,

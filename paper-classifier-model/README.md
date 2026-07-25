@@ -80,6 +80,26 @@ language-understanding performance.
 The model is evaluated on accuracy, weighted F1, weighted precision, and
 weighted recall. The best checkpoint is selected by weighted F1.
 
+### Measured results
+
+The hyperparameter table above lists the script's defaults. The weights
+published to the Hub were trained with a smaller budget than those defaults:
+a subsample of **8,000 training / 1,500 evaluation** examples, **3 epochs**,
+`--max_length 384`, on Apple MPS. Scores below are on the 1,500 held-out
+papers from that run:
+
+| Metric               | Score |
+|----------------------|-------|
+| Accuracy             | 0.829 |
+| F1 (weighted)        | 0.827 |
+| Precision (weighted) | 0.828 |
+| Recall (weighted)    | 0.829 |
+| Eval loss            | 0.576 |
+
+Training on the full corpus for the default 5 epochs at 512 tokens would
+likely score higher; these numbers describe the checkpoint you actually
+download, not the best achievable configuration.
+
 ## How to Use
 
 ### With the `transformers` pipeline
@@ -89,7 +109,7 @@ from transformers import pipeline
 
 classifier = pipeline(
     "text-classification",
-    model="gr8monk3ys/paper-classifier-model",
+    model="gr8monk3ys/paper-classifier",
 )
 
 abstract = (
@@ -100,14 +120,14 @@ abstract = (
 
 result = classifier(abstract)
 print(result)
-# [{'label': 'cs.CL', 'score': 0.95}]
+# [{'label': 'cs.NE', 'score': 0.61}]
 ```
 
 ### With the included inference script
 
 ```bash
 python inference.py \
-    --model_path gr8monk3ys/paper-classifier-model \
+    --model_path gr8monk3ys/paper-classifier \
     --abstract "We propose a convolutional neural network for image recognition..."
 ```
 
@@ -125,8 +145,11 @@ python train.py \
 
 ## Limitations
 
-- The model only covers a fixed set of 8 arxiv categories. Papers from other
-  fields will be forced into one of these buckets.
+- The model covers exactly the 11 categories present in
+  `ccdv/arxiv-classification`: `cs.AI`, `cs.CE`, `cs.CV`, `cs.DS`, `cs.IT`,
+  `cs.NE`, `cs.PL`, `cs.SY`, `math.AC`, `math.GR`, `math.ST`. Papers from any
+  other field -- including common ones like `cs.CL` and `cs.LG`, which are
+  **not** in the label space -- will be forced into one of these buckets.
 - Performance may degrade on abstracts that are unusually short, written in a
   language other than English, or that span multiple subject areas.
 - The model inherits any biases present in the DistilBERT base weights and in
@@ -141,6 +164,6 @@ If you use this model in your research, please cite:
     title  = {Academic Paper Classifier},
     author = {Lorenzo Scaturchio},
     year   = {2025},
-    url    = {https://huggingface.co/gr8monk3ys/paper-classifier-model}
+    url    = {https://huggingface.co/gr8monk3ys/paper-classifier}
 }
 ```

@@ -11,7 +11,7 @@ Usage examples:
     python inference.py --model_path ./model --abstract "We propose a novel ..."
 
     # Use a HuggingFace Hub model
-    python inference.py --model_path gr8monk3ys/paper-classifier-model \
+    python inference.py --model_path gr8monk3ys/paper-classifier \
                         --abstract "We propose a novel ..."
 
     # Interactive mode (reads from stdin)

@@ -181,7 +181,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--hub_model_id",
         type=str,
-        default="gr8monk3ys/paper-classifier-model",
+        default="gr8monk3ys/paper-classifier",
         help="Repository id on the HuggingFace Hub (default: %(default)s).",
     )
 

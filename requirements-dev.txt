@@ -1,0 +1,9 @@
+# Dependencies for running the test suite from the repo root: `pytest`
+#
+# The tests exercise only the network-free logic (hf_client and the per-Space
+# core.py modules), so this stays deliberately small -- it does NOT pull in
+# gradio, torch, or transformers. Each project's own requirements.txt covers
+# what that project needs to actually run.
+pytest>=8.0.0,<10.0.0
+numpy>=1.24.0,<3.0.0
+pandas>=2.0.0,<3.0.0

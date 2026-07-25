@@ -1,0 +1,52 @@
+name: tests
+
+# The only workflow that gates a change. Everything else in this repo runs on a
+# monthly cron to stay inside the free-plan Actions minutes for a private repo
+# (see 2ed7eb5). This one is deliberately exempt: the suite is network-free and
+# finishes in well under a second, so gating every push and PR costs ~1 minute
+# of the monthly budget per run while catching the regressions that matter.
+#
+# Doc-only changes are skipped, since nothing here tests Markdown.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "LICENSE"
+  pull_request:
+    paths-ignore:
+      - "**.md"
+      - "LICENSE"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # A newer push to the same ref makes an in-flight run redundant.
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run tests
+        run: pytest

@@ -218,7 +218,6 @@ def train(
 
     training_args = TrainingArguments(
         output_dir=output_dir,
-        overwrite_output_dir=True,
         # Training hyperparameters
         num_train_epochs=epochs,
         per_device_train_batch_size=batch_size,
@@ -261,7 +260,7 @@ def train(
         args=training_args,
         train_dataset=tokenized_dataset["train"],
         eval_dataset=tokenized_dataset["validation"],
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
         data_collator=data_collator,
         compute_metrics=build_compute_metrics(id2label),
         callbacks=callbacks,

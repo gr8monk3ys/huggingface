@@ -2,7 +2,7 @@
 
 ## Project Structure
 
-This is a monorepo containing 15 independent HuggingFace projects (datasets, models, and Spaces). Each subfolder is designed to be published independently to the HuggingFace Hub.
+This is a monorepo containing 16 independent HuggingFace projects (datasets, models, and Spaces). Each subfolder is designed to be published independently to the HuggingFace Hub.
 
 ```
 huggingface/
@@ -57,7 +57,36 @@ python app.py
 cd <model-folder>
 pip install -r requirements.txt
 python train.py
+
+# Run the test suite (from the repo root)
+pip install -r requirements-dev.txt
+pytest
 ```
+
+Tests live in `tests/` and cover the shared, network-free logic: `hf_client`
+(the inference helper each LLM/image Space vendors a copy of) and the per-Space
+`core.py` modules. They deliberately do not import `app.py` files, which would
+require every Space's UI dependencies.
+
+## Publishing to the Hub
+
+`scripts/publish_to_hub.py` is the one-shot publisher. It maps each local
+folder to its Hub repo id -- these differ, since folders carry `-space` /
+`-model` suffixes that the Hub repos do not -- and uploads cards, scripts,
+trained weights, and parquet data to the right repo type.
+
+```bash
+hf auth login              # required; --dry-run works without it
+python scripts/publish_to_hub.py --dry-run
+python scripts/publish_to_hub.py --only spaces|models|datasets
+```
+
+Uploads from a project root use an extension allowlist (`.py`, `.txt`, `.md`),
+so a stray venv or checkpoint cannot leak to the Hub by being forgotten.
+
+Note: creating a *new* Gradio Space now requires a PRO subscription (the Hub
+returns 402); existing Spaces remain writable. The script reports such a repo
+as skipped and carries on rather than aborting the run.
 
 ## HuggingFace Hub
 

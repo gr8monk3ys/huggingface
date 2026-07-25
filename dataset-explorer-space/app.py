@@ -34,7 +34,10 @@ POPULAR_DATASETS = [
 # Core Functions
 # ---------------------------------------------------------------------------
 
-def get_dataset_info(dataset_id: str, config: str = None, split: str = "train", num_samples: int = 100):
+
+def get_dataset_info(
+    dataset_id: str, config: str = None, split: str = "train", num_samples: int = 100
+):
     """Load dataset and extract information."""
     try:
         # Get available configs
@@ -80,9 +83,9 @@ def generate_stats(df: pd.DataFrame) -> str:
         null_pct = (df[col].isnull().sum() / len(df)) * 100
 
         col_info = f"**{col}** ({dtype})"
-        col_info += f"\n- Non-null: {non_null} ({100-null_pct:.1f}%)"
+        col_info += f"\n- Non-null: {non_null} ({100 - null_pct:.1f}%)"
 
-        if dtype == 'object' or dtype.name == 'string':
+        if dtype == "object" or dtype.name == "string":
             unique = df[col].nunique()
             col_info += f"\n- Unique values: {unique}"
             if unique <= 10:
@@ -104,7 +107,7 @@ def generate_visualization(df: pd.DataFrame) -> str:
 
     # Find columns to visualize
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-    categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
+    categorical_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
 
     # Limit columns to visualize
     numeric_cols = numeric_cols[:4]
@@ -127,21 +130,26 @@ def generate_visualization(df: pd.DataFrame) -> str:
     # Plot numeric columns as histograms
     for col in numeric_cols[:2]:
         if plot_idx < len(axes):
-            axes[plot_idx].hist(df[col].dropna(), bins=20, color='#3498db', alpha=0.7)
-            axes[plot_idx].set_title(f'{col} Distribution')
+            axes[plot_idx].hist(df[col].dropna(), bins=20, color="#3498db", alpha=0.7)
+            axes[plot_idx].set_title(f"{col} Distribution")
             axes[plot_idx].set_xlabel(col)
-            axes[plot_idx].set_ylabel('Count')
+            axes[plot_idx].set_ylabel("Count")
             plot_idx += 1
 
     # Plot categorical columns as bar charts
     for col in categorical_cols[:2]:
         if plot_idx < len(axes):
             value_counts = df[col].value_counts().head(10)
-            axes[plot_idx].barh(range(len(value_counts)), value_counts.values, color='#2ecc71', alpha=0.7)
+            axes[plot_idx].barh(
+                range(len(value_counts)),
+                value_counts.values,
+                color="#2ecc71",
+                alpha=0.7,
+            )
             axes[plot_idx].set_yticks(range(len(value_counts)))
             axes[plot_idx].set_yticklabels([str(v)[:20] for v in value_counts.index])
-            axes[plot_idx].set_title(f'{col} Distribution')
-            axes[plot_idx].set_xlabel('Count')
+            axes[plot_idx].set_title(f"{col} Distribution")
+            axes[plot_idx].set_xlabel("Count")
             plot_idx += 1
 
     plt.tight_layout()
@@ -149,7 +157,7 @@ def generate_visualization(df: pd.DataFrame) -> str:
     # Render the figure to an in-memory PNG and return a PIL image
     # (gr.Image cannot reliably render a raw BytesIO buffer).
     buf = io.BytesIO()
-    plt.savefig(buf, format='png', dpi=100, bbox_inches='tight')
+    plt.savefig(buf, format="png", dpi=100, bbox_inches="tight")
     buf.seek(0)
     plt.close()
 
@@ -208,26 +216,19 @@ with gr.Blocks(title="Dataset Explorer", theme=gr.themes.Soft()) as demo:
             dataset_id = gr.Textbox(
                 label="Dataset ID",
                 placeholder="e.g., imdb, squad, username/dataset-name",
-                value="imdb"
+                value="imdb",
             )
         with gr.Column(scale=1):
             config_input = gr.Textbox(
-                label="Config (optional)",
-                placeholder="Leave empty for default"
+                label="Config (optional)", placeholder="Leave empty for default"
             )
         with gr.Column(scale=1):
             split_input = gr.Dropdown(
-                choices=["train", "test", "validation"],
-                value="train",
-                label="Split"
+                choices=["train", "test", "validation"], value="train", label="Split"
             )
         with gr.Column(scale=1):
             num_samples = gr.Slider(
-                minimum=10,
-                maximum=500,
-                value=100,
-                step=10,
-                label="Samples to load"
+                minimum=10, maximum=500, value=100, step=10, label="Samples to load"
             )
 
     with gr.Row():
@@ -259,7 +260,7 @@ with gr.Blocks(title="Dataset Explorer", theme=gr.themes.Soft()) as demo:
     explore_btn.click(
         fn=explore_dataset,
         inputs=[dataset_id, config_input, split_input, num_samples],
-        outputs=[stats_output, config_output, viz_output, sample_output]
+        outputs=[stats_output, config_output, viz_output, sample_output],
     )
 
     gr.Markdown("""

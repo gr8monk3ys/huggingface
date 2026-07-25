@@ -39,9 +39,11 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 # Data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SectionPrediction:
     """A single section classification result."""
+
     text: str
     label: str
     confidence: float
@@ -59,6 +61,7 @@ class SectionPrediction:
 @dataclass
 class ResumeAnalysis:
     """Complete resume analysis output."""
+
     sections: list
     section_count: int = 0
     label_distribution: dict = field(default_factory=dict)
@@ -114,7 +117,9 @@ SECTION_HEADER_PATTERNS = [
     r"ACTIVITIES|LEADERSHIP|RESEARCH)\s*:?\s*$",
 ]
 
-COMPILED_HEADERS = [re.compile(p, re.MULTILINE | re.IGNORECASE) for p in SECTION_HEADER_PATTERNS]
+COMPILED_HEADERS = [
+    re.compile(p, re.MULTILINE | re.IGNORECASE) for p in SECTION_HEADER_PATTERNS
+]
 
 
 def is_section_header(line: str) -> bool:
@@ -195,6 +200,7 @@ def split_resume_into_sections(text: str, min_section_length: int = 20) -> list:
 # ---------------------------------------------------------------------------
 # Classifier
 # ---------------------------------------------------------------------------
+
 
 class ResumeSectionClassifier:
     """
@@ -313,17 +319,21 @@ class ResumeSectionClassifier:
 
         results = []
         for i, text in enumerate(texts):
-            scores = {self.id2label[j]: probs[i][j].item() for j in range(probs.shape[1])}
+            scores = {
+                self.id2label[j]: probs[i][j].item() for j in range(probs.shape[1])
+            }
             predicted_id = probs[i].argmax().item()
             predicted_label = self.id2label[predicted_id]
             confidence = probs[i][predicted_id].item()
 
-            results.append(SectionPrediction(
-                text=text,
-                label=predicted_label,
-                confidence=confidence,
-                all_scores=scores,
-            ))
+            results.append(
+                SectionPrediction(
+                    text=text,
+                    label=predicted_label,
+                    confidence=confidence,
+                    all_scores=scores,
+                )
+            )
 
         return results
 
@@ -361,6 +371,7 @@ class ResumeSectionClassifier:
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def main():
     import argparse
 
@@ -380,18 +391,42 @@ Examples:
     input_group.add_argument("--file", type=str, help="Path to resume text file")
     input_group.add_argument("--text", type=str, help="Direct text to classify")
 
-    parser.add_argument("--model", type=str, default="./model_output/final_model",
-                        help="Path to fine-tuned model (default: ./model_output/final_model)")
-    parser.add_argument("--device", type=str, default=None,
-                        help="Device: cpu, cuda, mps (auto-detected if omitted)")
-    parser.add_argument("--max-length", type=int, default=256,
-                        help="Maximum token sequence length (default: 256)")
-    parser.add_argument("--min-section-length", type=int, default=20,
-                        help="Minimum section length in characters (default: 20)")
-    parser.add_argument("--format", type=str, choices=["text", "json"], default="text",
-                        help="Output format (default: text)")
-    parser.add_argument("--single", action="store_true",
-                        help="Classify as single section (no splitting)")
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="./model_output/final_model",
+        help="Path to fine-tuned model (default: ./model_output/final_model)",
+    )
+    parser.add_argument(
+        "--device",
+        type=str,
+        default=None,
+        help="Device: cpu, cuda, mps (auto-detected if omitted)",
+    )
+    parser.add_argument(
+        "--max-length",
+        type=int,
+        default=256,
+        help="Maximum token sequence length (default: 256)",
+    )
+    parser.add_argument(
+        "--min-section-length",
+        type=int,
+        default=20,
+        help="Minimum section length in characters (default: 20)",
+    )
+    parser.add_argument(
+        "--format",
+        type=str,
+        choices=["text", "json"],
+        default="text",
+        help="Output format (default: text)",
+    )
+    parser.add_argument(
+        "--single",
+        action="store_true",
+        help="Classify as single section (no splitting)",
+    )
 
     args = parser.parse_args()
 
@@ -430,7 +465,9 @@ Examples:
                 bar = "#" * int(score * 40)
                 print(f"  {label:20s} {score:.4f} {bar}")
     else:
-        analysis = classifier.classify_resume(text, min_section_length=args.min_section_length)
+        analysis = classifier.classify_resume(
+            text, min_section_length=args.min_section_length
+        )
         if args.format == "json":
             print(analysis.to_json())
         else:

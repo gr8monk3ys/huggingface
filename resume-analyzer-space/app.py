@@ -24,7 +24,9 @@ from sklearn.metrics.pairwise import cosine_similarity
 # ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -34,24 +36,45 @@ MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
 RESUME_SECTIONS = {
     "experience": [
-        "experience", "work experience", "professional experience",
-        "employment history", "work history", "career history",
+        "experience",
+        "work experience",
+        "professional experience",
+        "employment history",
+        "work history",
+        "career history",
     ],
     "education": [
-        "education", "academic background", "academic history",
-        "qualifications", "certifications", "degrees",
+        "education",
+        "academic background",
+        "academic history",
+        "qualifications",
+        "certifications",
+        "degrees",
     ],
     "skills": [
-        "skills", "technical skills", "core competencies",
-        "competencies", "proficiencies", "technologies", "tools",
+        "skills",
+        "technical skills",
+        "core competencies",
+        "competencies",
+        "proficiencies",
+        "technologies",
+        "tools",
     ],
     "projects": [
-        "projects", "personal projects", "portfolio",
-        "key projects", "selected projects",
+        "projects",
+        "personal projects",
+        "portfolio",
+        "key projects",
+        "selected projects",
     ],
     "summary": [
-        "summary", "professional summary", "profile",
-        "objective", "career objective", "about me", "overview",
+        "summary",
+        "professional summary",
+        "profile",
+        "objective",
+        "career objective",
+        "about me",
+        "overview",
     ],
 }
 
@@ -143,6 +166,7 @@ Nice to Have
 - Familiarity with CI/CD pipelines for ML.
 """
 
+
 # ---------------------------------------------------------------------------
 # Model loading (deferred to first use, then cached)
 # ---------------------------------------------------------------------------
@@ -160,6 +184,7 @@ def _get_model() -> SentenceTransformer:
 # =========================================================================
 # Core analysis utilities
 # =========================================================================
+
 
 def extract_text_from_pdf(pdf_path: str) -> str:
     """Extract plain text from a PDF file using PyMuPDF."""
@@ -327,7 +352,9 @@ def generate_suggestions(
                 "academic projects in your Education section."
             )
 
-    if "summary" not in section_scores or not section_scores.get("summary", {}).get("score", 0):
+    if "summary" not in section_scores or not section_scores.get("summary", {}).get(
+        "score", 0
+    ):
         suggestions.append(
             "Add a Professional Summary at the top of your resume that directly "
             "addresses the key requirements of this role."
@@ -345,6 +372,7 @@ def generate_suggestions(
 # =========================================================================
 # Main analysis orchestrator
 # =========================================================================
+
 
 def run_analysis(
     resume_text: str,
@@ -378,7 +406,9 @@ def run_analysis(
     # ------------------------------------------------------------------
     keyword_lists = extract_keywords([resume_text, job_description], top_n=30)
     resume_keywords, job_keywords = keyword_lists[0], keyword_lists[1]
-    matched_kw, missing_kw = find_matching_and_missing_keywords(resume_text, job_keywords)
+    matched_kw, missing_kw = find_matching_and_missing_keywords(
+        resume_text, job_keywords
+    )
 
     keyword_overlap = len(matched_kw) / max(len(job_keywords), 1)
 
@@ -405,8 +435,12 @@ def run_analysis(
     # ------------------------------------------------------------------
     # Format outputs as Markdown
     # ------------------------------------------------------------------
-    overview_md = _format_overview(overall_pct, raw_similarity, keyword_overlap, matched_kw, missing_kw)
-    keywords_md = _format_keywords(resume_keywords, job_keywords, matched_kw, missing_kw)
+    overview_md = _format_overview(
+        overall_pct, raw_similarity, keyword_overlap, matched_kw, missing_kw
+    )
+    keywords_md = _format_keywords(
+        resume_keywords, job_keywords, matched_kw, missing_kw
+    )
     sections_md = _format_sections(section_scores)
     suggest_md = _format_suggestions(suggestions)
 
@@ -416,6 +450,7 @@ def run_analysis(
 # =========================================================================
 # Markdown formatters
 # =========================================================================
+
 
 def _score_bar(pct: float, width: int = 20) -> str:
     """Return a text-based progress bar for Markdown."""
@@ -437,7 +472,9 @@ def _format_overview(
     if overall_pct >= 70:
         verdict = "Excellent match - your resume aligns strongly with this role."
     elif overall_pct >= 50:
-        verdict = "Good match - some targeted improvements could strengthen your application."
+        verdict = (
+            "Good match - some targeted improvements could strengthen your application."
+        )
     elif overall_pct >= 30:
         verdict = "Partial match - significant tailoring is recommended."
     else:
@@ -466,8 +503,14 @@ def _format_keywords(
     matched: list[str],
     missing: list[str],
 ) -> str:
-    matched_str = ", ".join(f"**{kw}**" for kw in matched) if matched else "_None detected_"
-    missing_str = ", ".join(f"~~{kw}~~" for kw in missing) if missing else "_None - great coverage!_"
+    matched_str = (
+        ", ".join(f"**{kw}**" for kw in matched) if matched else "_None detected_"
+    )
+    missing_str = (
+        ", ".join(f"~~{kw}~~" for kw in missing)
+        if missing
+        else "_None - great coverage!_"
+    )
     resume_str = ", ".join(resume_kw[:20]) if resume_kw else "_None detected_"
     job_str = ", ".join(job_kw[:20]) if job_kw else "_None detected_"
 
@@ -511,6 +554,7 @@ def _format_suggestions(suggestions: list[str]) -> str:
 # =========================================================================
 # Gradio interface
 # =========================================================================
+
 
 def build_interface() -> gr.Blocks:
     """Construct and return the Gradio Blocks interface."""
@@ -565,7 +609,12 @@ def build_interface() -> gr.Blocks:
         analyze_btn.click(
             fn=run_analysis,
             inputs=[resume_text, job_desc, pdf_upload],
-            outputs=[overview_output, keywords_output, sections_output, suggestions_output],
+            outputs=[
+                overview_output,
+                keywords_output,
+                sections_output,
+                suggestions_output,
+            ],
         )
 
         gr.Markdown(

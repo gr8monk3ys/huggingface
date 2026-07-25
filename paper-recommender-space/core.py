@@ -33,7 +33,7 @@ FALLBACK_PAPERS = [
         "authors": "Vaswani, Shazeer, Parmar, et al.",
         "category": "cs.CL",
         "year": "2017",
-        "url": "https://arxiv.org/abs/1706.03762"
+        "url": "https://arxiv.org/abs/1706.03762",
     },
     {
         "title": "BERT: Pre-training of Deep Bidirectional Transformers",
@@ -41,7 +41,7 @@ FALLBACK_PAPERS = [
         "authors": "Devlin, Chang, Lee, Toutanova",
         "category": "cs.CL",
         "year": "2018",
-        "url": "https://arxiv.org/abs/1810.04805"
+        "url": "https://arxiv.org/abs/1810.04805",
     },
     {
         "title": "GPT-4 Technical Report",
@@ -49,7 +49,7 @@ FALLBACK_PAPERS = [
         "authors": "OpenAI",
         "category": "cs.CL",
         "year": "2023",
-        "url": "https://arxiv.org/abs/2303.08774"
+        "url": "https://arxiv.org/abs/2303.08774",
     },
     {
         "title": "ResNet: Deep Residual Learning for Image Recognition",
@@ -57,7 +57,7 @@ FALLBACK_PAPERS = [
         "authors": "He, Zhang, Ren, Sun",
         "category": "cs.CV",
         "year": "2015",
-        "url": "https://arxiv.org/abs/1512.03385"
+        "url": "https://arxiv.org/abs/1512.03385",
     },
     {
         "title": "YOLO: Real-Time Object Detection",
@@ -65,7 +65,7 @@ FALLBACK_PAPERS = [
         "authors": "Redmon, Divvala, Girshick, Farhadi",
         "category": "cs.CV",
         "year": "2016",
-        "url": "https://arxiv.org/abs/1506.02640"
+        "url": "https://arxiv.org/abs/1506.02640",
     },
     {
         "title": "Vision Transformer (ViT)",
@@ -73,7 +73,7 @@ FALLBACK_PAPERS = [
         "authors": "Dosovitskiy, Beyer, Kolesnikov, et al.",
         "category": "cs.CV",
         "year": "2020",
-        "url": "https://arxiv.org/abs/2010.11929"
+        "url": "https://arxiv.org/abs/2010.11929",
     },
     {
         "title": "Proximal Policy Optimization (PPO)",
@@ -81,7 +81,7 @@ FALLBACK_PAPERS = [
         "authors": "Schulman, Wolski, Dhariwal, et al.",
         "category": "cs.LG",
         "year": "2017",
-        "url": "https://arxiv.org/abs/1707.06347"
+        "url": "https://arxiv.org/abs/1707.06347",
     },
     {
         "title": "XGBoost: A Scalable Tree Boosting System",
@@ -89,7 +89,7 @@ FALLBACK_PAPERS = [
         "authors": "Chen, Guestrin",
         "category": "cs.LG",
         "year": "2016",
-        "url": "https://arxiv.org/abs/1603.02754"
+        "url": "https://arxiv.org/abs/1603.02754",
     },
     {
         "title": "Dropout: Preventing Neural Network Overfitting",
@@ -97,7 +97,7 @@ FALLBACK_PAPERS = [
         "authors": "Srivastava, Hinton, Krizhevsky, et al.",
         "category": "cs.LG",
         "year": "2014",
-        "url": "https://jmlr.org/papers/v15/srivastava14a.html"
+        "url": "https://jmlr.org/papers/v15/srivastava14a.html",
     },
     {
         "title": "Stable Diffusion: High-Resolution Image Synthesis",
@@ -105,7 +105,7 @@ FALLBACK_PAPERS = [
         "authors": "Rombach, Blattmann, Lorenz, et al.",
         "category": "cs.CV",
         "year": "2022",
-        "url": "https://arxiv.org/abs/2112.10752"
+        "url": "https://arxiv.org/abs/2112.10752",
     },
     {
         "title": "LLaMA: Open Foundation Language Models",
@@ -113,7 +113,7 @@ FALLBACK_PAPERS = [
         "authors": "Touvron, Lavril, Izacard, et al.",
         "category": "cs.CL",
         "year": "2023",
-        "url": "https://arxiv.org/abs/2302.13971"
+        "url": "https://arxiv.org/abs/2302.13971",
     },
     {
         "title": "Segment Anything Model (SAM)",
@@ -121,7 +121,7 @@ FALLBACK_PAPERS = [
         "authors": "Kirillov, Mintun, Ravi, et al.",
         "category": "cs.CV",
         "year": "2023",
-        "url": "https://arxiv.org/abs/2304.02643"
+        "url": "https://arxiv.org/abs/2304.02643",
     },
     {
         "title": "Adam: A Method for Stochastic Optimization",
@@ -129,7 +129,7 @@ FALLBACK_PAPERS = [
         "authors": "Kingma, Ba",
         "category": "cs.LG",
         "year": "2014",
-        "url": "https://arxiv.org/abs/1412.6980"
+        "url": "https://arxiv.org/abs/1412.6980",
     },
     {
         "title": "Batch Normalization: Accelerating Deep Network Training",
@@ -137,7 +137,7 @@ FALLBACK_PAPERS = [
         "authors": "Ioffe, Szegedy",
         "category": "cs.LG",
         "year": "2015",
-        "url": "https://arxiv.org/abs/1502.03167"
+        "url": "https://arxiv.org/abs/1502.03167",
     },
     {
         "title": "Word2Vec: Distributed Representations of Words",
@@ -145,7 +145,7 @@ FALLBACK_PAPERS = [
         "authors": "Mikolov, Chen, Corrado, Dean",
         "category": "cs.CL",
         "year": "2013",
-        "url": "https://arxiv.org/abs/1301.3781"
+        "url": "https://arxiv.org/abs/1301.3781",
     },
     {
         "title": "GAN: Generative Adversarial Networks",
@@ -153,7 +153,7 @@ FALLBACK_PAPERS = [
         "authors": "Goodfellow, Pouget-Abadie, Mirza, et al.",
         "category": "cs.LG",
         "year": "2014",
-        "url": "https://arxiv.org/abs/1406.2661"
+        "url": "https://arxiv.org/abs/1406.2661",
     },
     {
         "title": "Neural Machine Translation by Jointly Learning to Align and Translate",
@@ -161,7 +161,7 @@ FALLBACK_PAPERS = [
         "authors": "Bahdanau, Cho, Bengio",
         "category": "cs.CL",
         "year": "2014",
-        "url": "https://arxiv.org/abs/1409.0473"
+        "url": "https://arxiv.org/abs/1409.0473",
     },
     {
         "title": "ImageNet Classification with Deep Convolutional Neural Networks (AlexNet)",
@@ -169,7 +169,7 @@ FALLBACK_PAPERS = [
         "authors": "Krizhevsky, Sutskever, Hinton",
         "category": "cs.CV",
         "year": "2012",
-        "url": "https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks"
+        "url": "https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks",
     },
     {
         "title": "U-Net: Convolutional Networks for Biomedical Image Segmentation",
@@ -177,7 +177,7 @@ FALLBACK_PAPERS = [
         "authors": "Ronneberger, Fischer, Brox",
         "category": "cs.CV",
         "year": "2015",
-        "url": "https://arxiv.org/abs/1505.04597"
+        "url": "https://arxiv.org/abs/1505.04597",
     },
     {
         "title": "CLIP: Learning Transferable Visual Models From Natural Language Supervision",
@@ -185,7 +185,7 @@ FALLBACK_PAPERS = [
         "authors": "Radford, Kim, Hallacy, et al.",
         "category": "cs.CV",
         "year": "2021",
-        "url": "https://arxiv.org/abs/2103.00020"
+        "url": "https://arxiv.org/abs/2103.00020",
     },
 ]
 

@@ -105,14 +105,24 @@ def generate_signals(df: pd.DataFrame) -> pd.DataFrame:
 
 def _crosses_above(fast: np.ndarray, slow: np.ndarray, i: int) -> bool:
     """Return True if *fast* crosses above *slow* at index *i*."""
-    if np.isnan(fast[i]) or np.isnan(slow[i]) or np.isnan(fast[i - 1]) or np.isnan(slow[i - 1]):
+    if (
+        np.isnan(fast[i])
+        or np.isnan(slow[i])
+        or np.isnan(fast[i - 1])
+        or np.isnan(slow[i - 1])
+    ):
         return False
     return fast[i - 1] <= slow[i - 1] and fast[i] > slow[i]
 
 
 def _crosses_below(fast: np.ndarray, slow: np.ndarray, i: int) -> bool:
     """Return True if *fast* crosses below *slow* at index *i*."""
-    if np.isnan(fast[i]) or np.isnan(slow[i]) or np.isnan(fast[i - 1]) or np.isnan(slow[i - 1]):
+    if (
+        np.isnan(fast[i])
+        or np.isnan(slow[i])
+        or np.isnan(fast[i - 1])
+        or np.isnan(slow[i - 1])
+    ):
         return False
     return fast[i - 1] >= slow[i - 1] and fast[i] < slow[i]
 

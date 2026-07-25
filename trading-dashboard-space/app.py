@@ -287,8 +287,7 @@ def build_main_chart(df: pd.DataFrame, ticker: str) -> go.Figure:
 
     # --- Row 3: MACD --------------------------------------------------------
     macd_colors = [
-        COLORS["green"] if v >= 0 else COLORS["red"]
-        for v in df["MACD_Hist"].fillna(0)
+        COLORS["green"] if v >= 0 else COLORS["red"] for v in df["MACD_Hist"].fillna(0)
     ]
     fig.add_trace(
         go.Bar(
@@ -355,7 +354,9 @@ def build_main_chart(df: pd.DataFrame, ticker: str) -> go.Figure:
 
     # Y-axis labels
     fig.update_yaxes(title_text="Price ($)", row=1, col=1, gridcolor=COLORS["grid"])
-    fig.update_yaxes(title_text="RSI", row=2, col=1, gridcolor=COLORS["grid"], range=[0, 100])
+    fig.update_yaxes(
+        title_text="RSI", row=2, col=1, gridcolor=COLORS["grid"], range=[0, 100]
+    )
     fig.update_yaxes(title_text="MACD", row=3, col=1, gridcolor=COLORS["grid"])
     fig.update_yaxes(title_text="Volume", row=4, col=1, gridcolor=COLORS["grid"])
 
@@ -365,9 +366,7 @@ def build_main_chart(df: pd.DataFrame, ticker: str) -> go.Figure:
     return fig
 
 
-def build_backtest_chart(
-    df: pd.DataFrame, backtest: dict, ticker: str
-) -> go.Figure:
+def build_backtest_chart(df: pd.DataFrame, backtest: dict, ticker: str) -> go.Figure:
     """Build the equity-curve comparison chart for the backtest tab."""
 
     close = df["Close"].values.astype(float)
@@ -462,14 +461,14 @@ def format_backtest_summary(bt: dict, ticker: str) -> str:
 
 | Metric | Value |
 |--------|-------|
-| Initial Capital | ${bt['initial_capital']:,.2f} |
-| Final Portfolio Value | ${bt['final_value']:,.2f} |
-| **Strategy Return** | **{bt['strategy_return_pct']:+.2f}%** |
-| **Buy & Hold Return** | **{bt['buy_hold_return_pct']:+.2f}%** |
+| Initial Capital | ${bt["initial_capital"]:,.2f} |
+| Final Portfolio Value | ${bt["final_value"]:,.2f} |
+| **Strategy Return** | **{bt["strategy_return_pct"]:+.2f}%** |
+| **Buy & Hold Return** | **{bt["buy_hold_return_pct"]:+.2f}%** |
 | **Outperformance** | **{outperform:+.2f}%** |
-| Total Trades | {bt['total_trades']} |
-| Winning Trades | {bt['winning_trades']} |
-| Win Rate | {bt['win_rate_pct']:.1f}% |
+| Total Trades | {bt["total_trades"]} |
+| Winning Trades | {bt["winning_trades"]} |
+| Win Rate | {bt["win_rate_pct"]:.1f}% |
 
 ---
 

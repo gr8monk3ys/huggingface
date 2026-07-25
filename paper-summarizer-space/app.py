@@ -52,6 +52,7 @@ logger.info("Inference client ready.")
 # Text extraction helpers
 # ===========================================================================
 
+
 def extract_text_from_pdf(pdf_path: str) -> str:
     """Extract all text content from a PDF file using PyMuPDF.
 
@@ -111,6 +112,7 @@ def clean_text(text: str) -> str:
 # Title extraction heuristic
 # ===========================================================================
 
+
 def extract_title(text: str) -> str:
     """Attempt to extract the paper title from the first few lines.
 
@@ -147,6 +149,7 @@ def extract_title(text: str) -> str:
 # ===========================================================================
 # Chunking and summarization
 # ===========================================================================
+
 
 def chunk_text(text: str, max_words: int = CHUNK_WORD_LIMIT) -> list[str]:
     """Split text into chunks of approximately *max_words* words.
@@ -268,6 +271,7 @@ def generate_full_summary(text: str) -> str:
 # Section extraction helpers
 # ===========================================================================
 
+
 def extract_section(text: str, heading_pattern: str, fallback: str = "") -> str:
     """Extract content under a section heading matched by *heading_pattern*.
 
@@ -300,7 +304,7 @@ def extract_key_findings(text: str) -> str:
             return summarize_text(content[:3000])
     # Fallback: summarize the last quarter of the document.
     words = text.split()
-    tail = " ".join(words[-(len(words) // 4):])
+    tail = " ".join(words[-(len(words) // 4) :])
     if len(tail.split()) > 50:
         return summarize_text(tail[:3000])
     return "Key findings could not be automatically extracted."
@@ -324,6 +328,7 @@ def extract_methodology(text: str) -> str:
 # ===========================================================================
 # Main processing function
 # ===========================================================================
+
 
 def process_paper(
     pdf_file: Optional[str],
@@ -431,6 +436,7 @@ In this work, we presented the Transformer, the first sequence transduction mode
 # ===========================================================================
 # Gradio interface
 # ===========================================================================
+
 
 def build_interface() -> gr.Blocks:
     """Construct and return the Gradio Blocks interface."""

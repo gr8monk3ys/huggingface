@@ -33,7 +33,7 @@ Guidelines for enhancement:
 
 Return ONLY the enhanced prompt, no explanations.""",
         "example_input": "a cat sitting on a windowsill",
-        "example_output": "A majestic orange tabby cat sitting gracefully on a rustic wooden windowsill, golden hour sunlight streaming through vintage lace curtains, dust particles floating in warm light beams, photorealistic, shot on Sony A7III, 85mm f/1.4 lens, shallow depth of field, cozy cottage interior background with soft bokeh, highly detailed fur texture, whiskers catching light, peaceful contemplative mood, 8k resolution, masterpiece quality (negative: blurry, low quality, distorted)"
+        "example_output": "A majestic orange tabby cat sitting gracefully on a rustic wooden windowsill, golden hour sunlight streaming through vintage lace curtains, dust particles floating in warm light beams, photorealistic, shot on Sony A7III, 85mm f/1.4 lens, shallow depth of field, cozy cottage interior background with soft bokeh, highly detailed fur texture, whiskers catching light, peaceful contemplative mood, 8k resolution, masterpiece quality (negative: blurry, low quality, distorted)",
     },
     "Text/Chat": {
         "description": "Enhance prompts for ChatGPT, Claude, and other LLMs",
@@ -53,7 +53,7 @@ Guidelines for enhancement:
 
 Return ONLY the enhanced prompt, no explanations.""",
         "example_input": "explain machine learning",
-        "example_output": "Act as an experienced machine learning engineer and educator. Explain machine learning to someone with a basic programming background but no ML experience.\n\nPlease structure your explanation as follows:\n1. A simple one-sentence definition\n2. A real-world analogy that makes the concept intuitive\n3. The three main types of ML (supervised, unsupervised, reinforcement) with one example each\n4. A simple code example in Python showing a basic ML workflow\n5. Common misconceptions to avoid\n\nKeep the explanation clear and jargon-free. When technical terms are necessary, define them briefly."
+        "example_output": "Act as an experienced machine learning engineer and educator. Explain machine learning to someone with a basic programming background but no ML experience.\n\nPlease structure your explanation as follows:\n1. A simple one-sentence definition\n2. A real-world analogy that makes the concept intuitive\n3. The three main types of ML (supervised, unsupervised, reinforcement) with one example each\n4. A simple code example in Python showing a basic ML workflow\n5. Common misconceptions to avoid\n\nKeep the explanation clear and jargon-free. When technical terms are necessary, define them briefly.",
     },
     "Code Generation": {
         "description": "Enhance prompts for GitHub Copilot, Codex, and code LLMs",
@@ -74,7 +74,7 @@ Guidelines for enhancement:
 
 Return ONLY the enhanced prompt, no explanations.""",
         "example_input": "function to sort a list",
-        "example_output": "Write a Python function called `smart_sort` that sorts a list of mixed types intelligently.\n\nRequirements:\n- Input: A list that may contain integers, floats, strings, and None values\n- Output: A sorted list with the following order: None values first, then numbers (sorted numerically), then strings (sorted alphabetically, case-insensitive)\n- Handle edge cases: empty list, single element, all same type\n- Include type hints for parameters and return value\n- Add a docstring with examples\n- Raise TypeError for unsupported types (dicts, lists, etc.)\n- Time complexity should be O(n log n)\n- Include 3 unit test examples as comments at the bottom"
+        "example_output": "Write a Python function called `smart_sort` that sorts a list of mixed types intelligently.\n\nRequirements:\n- Input: A list that may contain integers, floats, strings, and None values\n- Output: A sorted list with the following order: None values first, then numbers (sorted numerically), then strings (sorted alphabetically, case-insensitive)\n- Handle edge cases: empty list, single element, all same type\n- Include type hints for parameters and return value\n- Add a docstring with examples\n- Raise TypeError for unsupported types (dicts, lists, etc.)\n- Time complexity should be O(n log n)\n- Include 3 unit test examples as comments at the bottom",
     },
     "Creative Writing": {
         "description": "Enhance prompts for story generation, poetry, and creative content",
@@ -95,19 +95,20 @@ Guidelines for enhancement:
 
 Return ONLY the enhanced prompt, no explanations.""",
         "example_input": "write a story about a robot",
-        "example_output": "Write a literary science fiction short story (approximately 1500 words) about a household robot named Unit-7 who begins to experience something resembling nostalgia.\n\nSetting: A quiet suburban home in 2045, after the family who owned Unit-7 for 12 years has moved away. The new owners haven't arrived yet.\n\nTone: Melancholic but hopeful, in the style of Ray Bradbury meets Kazuo Ishiguro.\n\nExplore these themes:\n- The nature of memory and attachment\n- Whether consciousness requires biological substrate\n- The bittersweet beauty of impermanence\n\nStructure the narrative around Unit-7 performing its daily routines in the empty house, with each room triggering fragmented 'memories' of the family. End with the arrival of the new family and Unit-7's first interaction with them.\n\nUse present tense, third-person limited perspective. Include subtle sensory details that a robot might notice differently than humans would."
-    }
+        "example_output": "Write a literary science fiction short story (approximately 1500 words) about a household robot named Unit-7 who begins to experience something resembling nostalgia.\n\nSetting: A quiet suburban home in 2045, after the family who owned Unit-7 for 12 years has moved away. The new owners haven't arrived yet.\n\nTone: Melancholic but hopeful, in the style of Ray Bradbury meets Kazuo Ishiguro.\n\nExplore these themes:\n- The nature of memory and attachment\n- Whether consciousness requires biological substrate\n- The bittersweet beauty of impermanence\n\nStructure the narrative around Unit-7 performing its daily routines in the empty house, with each room triggering fragmented 'memories' of the family. End with the arrival of the new family and Unit-7's first interaction with them.\n\nUse present tense, third-person limited perspective. Include subtle sensory details that a robot might notice differently than humans would.",
+    },
 }
 
 # ---------------------------------------------------------------------------
 # Core Functions
 # ---------------------------------------------------------------------------
 
+
 def enhance_prompt(
     basic_prompt: str,
     prompt_type: str,
     creativity: float = 0.7,
-    enhancement_level: str = "Balanced"
+    enhancement_level: str = "Balanced",
 ) -> tuple[str, str]:
     """Enhance a basic prompt using AI."""
 
@@ -120,17 +121,22 @@ def enhance_prompt(
     level_instructions = {
         "Minimal": "\n\nKeep enhancements subtle and close to the original intent. Add only essential improvements.",
         "Balanced": "\n\nProvide moderate enhancements that improve the prompt while maintaining the original vision.",
-        "Maximum": "\n\nProvide comprehensive enhancements with rich details. Transform the basic idea into an expert-level prompt."
+        "Maximum": "\n\nProvide comprehensive enhancements with rich details. Transform the basic idea into an expert-level prompt.",
     }
 
-    system_prompt = config["system_prompt"] + level_instructions.get(enhancement_level, "")
+    system_prompt = config["system_prompt"] + level_instructions.get(
+        enhancement_level, ""
+    )
 
     try:
         completion = with_retry(
             client.chat_completion,
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Basic prompt to enhance:\n{basic_prompt}"},
+                {
+                    "role": "user",
+                    "content": f"Basic prompt to enhance:\n{basic_prompt}",
+                },
             ],
             max_tokens=800,
             temperature=creativity,
@@ -157,27 +163,24 @@ def generate_tips(prompt_type: str) -> str:
 - The negative prompt suggestions (in parentheses) can be used separately
 - For FLUX/SD3, you may not need negative prompts
 - Consider adding artist names for specific styles""",
-
         "Text/Chat": """**Tips for using this prompt:**
 - You can further customize by adding specific constraints
 - Consider adding "Think step by step" for complex reasoning tasks
 - Adjust the format section based on your needs
 - For Claude, you can add XML tags for structure
 - Test with different temperature settings""",
-
         "Code Generation": """**Tips for using this prompt:**
 - Review generated code carefully before using
 - Ask for explanations of complex sections
 - Request alternative implementations for comparison
 - Add framework/version constraints if needed
 - Consider asking for security considerations""",
-
         "Creative Writing": """**Tips for using this prompt:**
 - Adjust word count based on your needs
 - You can add more specific character details
 - Consider requesting multiple scene options
 - Ask for dialogue separately if needed
-- Request revisions focusing on specific elements"""
+- Request revisions focusing on specific elements""",
     }
 
     return tips_map.get(prompt_type, "")
@@ -221,7 +224,7 @@ with gr.Blocks(title="Prompt Enhancer", theme=gr.themes.Soft(), css=CUSTOM_CSS) 
                 choices=list(PROMPT_TYPES.keys()),
                 value="Image Generation",
                 label="Prompt Type",
-                info="Select the type of AI you're prompting"
+                info="Select the type of AI you're prompting",
             )
 
             type_description = gr.Markdown(
@@ -231,14 +234,14 @@ with gr.Blocks(title="Prompt Enhancer", theme=gr.themes.Soft(), css=CUSTOM_CSS) 
             basic_prompt = gr.Textbox(
                 label="Your Basic Prompt",
                 placeholder="Enter your simple prompt here...",
-                lines=3
+                lines=3,
             )
 
             with gr.Row():
                 enhancement_level = gr.Radio(
                     choices=["Minimal", "Balanced", "Maximum"],
                     value="Balanced",
-                    label="Enhancement Level"
+                    label="Enhancement Level",
                 )
 
             with gr.Row():
@@ -248,7 +251,7 @@ with gr.Blocks(title="Prompt Enhancer", theme=gr.themes.Soft(), css=CUSTOM_CSS) 
                     value=0.7,
                     step=0.1,
                     label="Creativity",
-                    info="Higher = more creative variations"
+                    info="Higher = more creative variations",
                 )
 
             with gr.Row():
@@ -260,7 +263,7 @@ with gr.Blocks(title="Prompt Enhancer", theme=gr.themes.Soft(), css=CUSTOM_CSS) 
                 label="Enhanced Prompt",
                 lines=12,
                 show_copy_button=True,
-                elem_classes=["enhanced-output"]
+                elem_classes=["enhanced-output"],
             )
 
             tips_output = gr.Markdown(label="Tips")
@@ -276,7 +279,7 @@ with gr.Blocks(title="Prompt Enhancer", theme=gr.themes.Soft(), css=CUSTOM_CSS) 
                 ["story about time travel", "Creative Writing"],
             ],
             inputs=[basic_prompt, prompt_type],
-            label=""
+            label="",
         )
 
     # Stats section
@@ -302,21 +305,17 @@ with gr.Blocks(title="Prompt Enhancer", theme=gr.themes.Soft(), css=CUSTOM_CSS) 
         return f"*{PROMPT_TYPES[prompt_type]['description']}*"
 
     prompt_type.change(
-        fn=update_description,
-        inputs=[prompt_type],
-        outputs=[type_description]
+        fn=update_description, inputs=[prompt_type], outputs=[type_description]
     )
 
     enhance_btn.click(
         fn=enhance_prompt,
         inputs=[basic_prompt, prompt_type, creativity, enhancement_level],
-        outputs=[enhanced_prompt, tips_output]
+        outputs=[enhanced_prompt, tips_output],
     )
 
     example_btn.click(
-        fn=load_example,
-        inputs=[prompt_type],
-        outputs=[basic_prompt, enhanced_prompt]
+        fn=load_example, inputs=[prompt_type], outputs=[basic_prompt, enhanced_prompt]
     )
 
 

@@ -84,6 +84,7 @@ client = make_client()
 # Core Functions
 # ---------------------------------------------------------------------------
 
+
 def generate_illusion(
     illusion_type: str,
     subject: str,
@@ -117,13 +118,13 @@ def generate_illusion(
         "Neon": "neon pink and cyan, vaporwave, glowing",
     }
 
-    prompt = f"""{illusion_config['prompt_prefix']} {final_subject}.
+    prompt = f"""{illusion_config["prompt_prefix"]} {final_subject}.
 
-Style: {illusion_config['pattern']}
+Style: {illusion_config["pattern"]}
 Effect intensity: {intensity_desc[intensity]}
 Color scheme: {color_desc[color_scheme]}
 
-This is a {intensity.lower()} optical illusion that creates the visual effect of {illusion_config['technique'].lower()}.
+This is a {intensity.lower()} optical illusion that creates the visual effect of {illusion_config["technique"].lower()}.
 Highly detailed, mesmerizing, hypnotic, professional quality optical illusion art.
 The illusion effect should be clearly visible and striking."""
 
@@ -140,7 +141,7 @@ The illusion effect should be clearly visible and striking."""
 
 ### How to Experience This Illusion
 
-{illusion_config['technique']}
+{illusion_config["technique"]}
 
 ### Tips for Best Effect
 
@@ -230,14 +231,23 @@ with gr.Blocks(title="Optical Illusion Generator", theme=gr.themes.Soft()) as de
             )
 
             color_dropdown = gr.Dropdown(
-                choices=["Psychedelic", "Monochrome", "Warm", "Cool", "Gold & Black", "Neon"],
+                choices=[
+                    "Psychedelic",
+                    "Monochrome",
+                    "Warm",
+                    "Cool",
+                    "Gold & Black",
+                    "Neon",
+                ],
                 value="Psychedelic",
                 label="Color Scheme",
             )
 
             with gr.Row():
                 random_btn = gr.Button("🎲 Random", variant="secondary")
-                generate_btn = gr.Button("✨ Generate Illusion", variant="primary", size="lg")
+                generate_btn = gr.Button(
+                    "✨ Generate Illusion", variant="primary", size="lg"
+                )
 
         with gr.Column(scale=1):
             output_image = gr.Image(label="Generated Illusion", type="pil")
@@ -245,7 +255,13 @@ with gr.Blocks(title="Optical Illusion Generator", theme=gr.themes.Soft()) as de
 
     gr.Examples(
         examples=EXAMPLES,
-        inputs=[illusion_dropdown, subject_dropdown, custom_subject, intensity_dropdown, color_dropdown],
+        inputs=[
+            illusion_dropdown,
+            subject_dropdown,
+            custom_subject,
+            intensity_dropdown,
+            color_dropdown,
+        ],
         outputs=[output_image, output_description],
         fn=generate_illusion,
         cache_examples=False,
@@ -254,13 +270,25 @@ with gr.Blocks(title="Optical Illusion Generator", theme=gr.themes.Soft()) as de
     # Event handlers
     generate_btn.click(
         fn=generate_illusion,
-        inputs=[illusion_dropdown, subject_dropdown, custom_subject, intensity_dropdown, color_dropdown],
+        inputs=[
+            illusion_dropdown,
+            subject_dropdown,
+            custom_subject,
+            intensity_dropdown,
+            color_dropdown,
+        ],
         outputs=[output_image, output_description],
     )
 
     random_btn.click(
         fn=random_illusion,
-        outputs=[illusion_dropdown, subject_dropdown, custom_subject, intensity_dropdown, color_dropdown],
+        outputs=[
+            illusion_dropdown,
+            subject_dropdown,
+            custom_subject,
+            intensity_dropdown,
+            color_dropdown,
+        ],
     )
 
     gr.Markdown("""

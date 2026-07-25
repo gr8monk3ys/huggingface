@@ -31,7 +31,14 @@ def test_normalize_row_maps_dataset_schema():
 
 def test_load_papers_with_injected_loader_drops_incomplete():
     rows = [
-        {"title": "T1", "abstract": "A1", "authors": ["X"], "primary_category": "cs.CL", "published": "2020", "url": "u1"},
+        {
+            "title": "T1",
+            "abstract": "A1",
+            "authors": ["X"],
+            "primary_category": "cs.CL",
+            "published": "2020",
+            "url": "u1",
+        },
         {"title": "", "abstract": "missing title", "primary_category": "cs.CL"},
     ]
     papers = core.load_papers(loader=lambda dataset_id, split: rows)
@@ -56,8 +63,22 @@ def _keyword_encoder(texts):
 
 def test_recommend_ranks_and_filters():
     papers = [
-        {"title": "cat", "abstract": "feline", "category": "cs.CV", "authors": "a", "year": "2020", "url": "u"},
-        {"title": "dog", "abstract": "canine", "category": "cs.LG", "authors": "b", "year": "2021", "url": "u"},
+        {
+            "title": "cat",
+            "abstract": "feline",
+            "category": "cs.CV",
+            "authors": "a",
+            "year": "2020",
+            "url": "u",
+        },
+        {
+            "title": "dog",
+            "abstract": "canine",
+            "category": "cs.LG",
+            "authors": "b",
+            "year": "2021",
+            "url": "u",
+        },
     ]
     matrix = core.build_index(papers, _keyword_encoder)
 
@@ -65,7 +86,9 @@ def test_recommend_ranks_and_filters():
     assert top[0]["title"] == "cat"
     assert top[0]["similarity"] > top[1]["similarity"]
 
-    filtered = core.recommend("cat feline", papers, matrix, _keyword_encoder, "cs.LG", 5)
+    filtered = core.recommend(
+        "cat feline", papers, matrix, _keyword_encoder, "cs.LG", 5
+    )
     assert [r["title"] for r in filtered] == ["dog"]
 
     assert core.recommend("   ", papers, matrix, _keyword_encoder, None, 5) == []

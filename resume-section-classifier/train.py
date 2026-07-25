@@ -69,10 +69,18 @@ def build_compute_metrics(id2label: dict):
         predictions = np.argmax(logits, axis=-1)
 
         acc = accuracy_metric.compute(predictions=predictions, references=labels)
-        f1_macro = f1_metric.compute(predictions=predictions, references=labels, average="macro")
-        f1_weighted = f1_metric.compute(predictions=predictions, references=labels, average="weighted")
-        precision = precision_metric.compute(predictions=predictions, references=labels, average="weighted")
-        recall = recall_metric.compute(predictions=predictions, references=labels, average="weighted")
+        f1_macro = f1_metric.compute(
+            predictions=predictions, references=labels, average="macro"
+        )
+        f1_weighted = f1_metric.compute(
+            predictions=predictions, references=labels, average="weighted"
+        )
+        precision = precision_metric.compute(
+            predictions=predictions, references=labels, average="weighted"
+        )
+        recall = recall_metric.compute(
+            predictions=predictions, references=labels, average="weighted"
+        )
 
         return {
             "accuracy": acc["accuracy"],
@@ -88,7 +96,9 @@ def build_compute_metrics(id2label: dict):
 # ---------------------------------------------------------------------------
 # Tokenization
 # ---------------------------------------------------------------------------
-def tokenize_dataset(dataset_dict: DatasetDict, tokenizer, label2id: dict, max_length: int = MAX_LENGTH):
+def tokenize_dataset(
+    dataset_dict: DatasetDict, tokenizer, label2id: dict, max_length: int = MAX_LENGTH
+):
     """Tokenize all splits and encode labels as integers."""
 
     def preprocess(examples):
@@ -166,7 +176,9 @@ def train(
     logger.info(f"Model: {model_name}")
     logger.info(f"Output: {output_dir}")
     logger.info(f"Epochs: {epochs}, Batch size: {batch_size}, LR: {learning_rate}")
-    logger.info(f"Device: {'CUDA' if torch.cuda.is_available() else 'MPS' if torch.backends.mps.is_available() else 'CPU'}")
+    logger.info(
+        f"Device: {'CUDA' if torch.cuda.is_available() else 'MPS' if torch.backends.mps.is_available() else 'CPU'}"
+    )
     logger.info(f"FP16: {fp16}")
 
     # ------------------------------------------------------------------
@@ -209,7 +221,9 @@ def train(
         label2id=label2id,
     )
     logger.info(f"  Parameters: {sum(p.numel() for p in model.parameters()):,}")
-    logger.info(f"  Trainable: {sum(p.numel() for p in model.parameters() if p.requires_grad):,}")
+    logger.info(
+        f"  Trainable: {sum(p.numel() for p in model.parameters() if p.requires_grad):,}"
+    )
 
     # ------------------------------------------------------------------
     # 4. Training
@@ -253,7 +267,9 @@ def train(
 
     callbacks = []
     if early_stopping_patience > 0:
-        callbacks.append(EarlyStoppingCallback(early_stopping_patience=early_stopping_patience))
+        callbacks.append(
+            EarlyStoppingCallback(early_stopping_patience=early_stopping_patience)
+        )
 
     trainer = Trainer(
         model=model,
@@ -281,7 +297,9 @@ def train(
 
     logger.info("\nTest Results:")
     for key, value in test_results.items():
-        logger.info(f"  {key}: {value:.4f}" if isinstance(value, float) else f"  {key}: {value}")
+        logger.info(
+            f"  {key}: {value:.4f}" if isinstance(value, float) else f"  {key}: {value}"
+        )
 
     # ------------------------------------------------------------------
     # Save artifacts
@@ -365,48 +383,92 @@ if __name__ == "__main__":
     )
 
     # Model & output
-    parser.add_argument("--model-name", type=str, default=MODEL_NAME,
-                        help="Pretrained model name or path")
-    parser.add_argument("--output-dir", type=str, default=DEFAULT_OUTPUT_DIR,
-                        help="Output directory for model and artifacts")
+    parser.add_argument(
+        "--model-name",
+        type=str,
+        default=MODEL_NAME,
+        help="Pretrained model name or path",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default=DEFAULT_OUTPUT_DIR,
+        help="Output directory for model and artifacts",
+    )
 
     # Training hyperparameters
-    parser.add_argument("--epochs", type=int, default=4,
-                        help="Number of training epochs")
-    parser.add_argument("--batch-size", type=int, default=16,
-                        help="Training batch size per device")
-    parser.add_argument("--learning-rate", type=float, default=2e-5,
-                        help="Peak learning rate")
-    parser.add_argument("--weight-decay", type=float, default=0.01,
-                        help="Weight decay for AdamW")
-    parser.add_argument("--warmup-ratio", type=float, default=0.1,
-                        help="Fraction of total steps for linear warmup")
-    parser.add_argument("--max-length", type=int, default=MAX_LENGTH,
-                        help="Maximum token sequence length")
-    parser.add_argument("--gradient-accumulation-steps", type=int, default=1,
-                        help="Number of gradient accumulation steps")
+    parser.add_argument(
+        "--epochs", type=int, default=4, help="Number of training epochs"
+    )
+    parser.add_argument(
+        "--batch-size", type=int, default=16, help="Training batch size per device"
+    )
+    parser.add_argument(
+        "--learning-rate", type=float, default=2e-5, help="Peak learning rate"
+    )
+    parser.add_argument(
+        "--weight-decay", type=float, default=0.01, help="Weight decay for AdamW"
+    )
+    parser.add_argument(
+        "--warmup-ratio",
+        type=float,
+        default=0.1,
+        help="Fraction of total steps for linear warmup",
+    )
+    parser.add_argument(
+        "--max-length",
+        type=int,
+        default=MAX_LENGTH,
+        help="Maximum token sequence length",
+    )
+    parser.add_argument(
+        "--gradient-accumulation-steps",
+        type=int,
+        default=1,
+        help="Number of gradient accumulation steps",
+    )
 
     # Data
-    parser.add_argument("--examples-per-category", type=int, default=80,
-                        help="Base synthetic examples per category")
-    parser.add_argument("--augmented-copies", type=int, default=2,
-                        help="Augmented copies per base example")
-    parser.add_argument("--seed", type=int, default=42,
-                        help="Random seed for reproducibility")
+    parser.add_argument(
+        "--examples-per-category",
+        type=int,
+        default=80,
+        help="Base synthetic examples per category",
+    )
+    parser.add_argument(
+        "--augmented-copies",
+        type=int,
+        default=2,
+        help="Augmented copies per base example",
+    )
+    parser.add_argument(
+        "--seed", type=int, default=42, help="Random seed for reproducibility"
+    )
 
     # Training config
-    parser.add_argument("--fp16", action="store_true", default=None,
-                        help="Force FP16 training")
-    parser.add_argument("--no-fp16", action="store_true",
-                        help="Disable FP16 training")
-    parser.add_argument("--early-stopping-patience", type=int, default=3,
-                        help="Early stopping patience (0 to disable)")
+    parser.add_argument(
+        "--fp16", action="store_true", default=None, help="Force FP16 training"
+    )
+    parser.add_argument("--no-fp16", action="store_true", help="Disable FP16 training")
+    parser.add_argument(
+        "--early-stopping-patience",
+        type=int,
+        default=3,
+        help="Early stopping patience (0 to disable)",
+    )
 
     # Hub
-    parser.add_argument("--push-to-hub", action="store_true",
-                        help="Push trained model to HuggingFace Hub")
-    parser.add_argument("--hub-model-id", type=str, default=HUB_MODEL_ID,
-                        help="HuggingFace Hub model ID")
+    parser.add_argument(
+        "--push-to-hub",
+        action="store_true",
+        help="Push trained model to HuggingFace Hub",
+    )
+    parser.add_argument(
+        "--hub-model-id",
+        type=str,
+        default=HUB_MODEL_ID,
+        help="HuggingFace Hub model ID",
+    )
 
     args = parser.parse_args()
 

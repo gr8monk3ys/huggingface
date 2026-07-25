@@ -55,7 +55,10 @@ client = make_client()
 # Core Functions
 # ---------------------------------------------------------------------------
 
-def mix_styles(style1: str, style2: str, blend_ratio: float, subject: str, custom_subject: str) -> tuple:
+
+def mix_styles(
+    style1: str, style2: str, blend_ratio: float, subject: str, custom_subject: str
+) -> tuple:
     """Generate an image blending two art styles."""
 
     # Use custom subject if provided
@@ -185,7 +188,9 @@ with gr.Blocks(title="Style Mixer", theme=gr.themes.Soft()) as demo:
 
             with gr.Row():
                 random_btn = gr.Button("🎲 Random Mix", variant="secondary")
-                generate_btn = gr.Button("🎨 Generate Art", variant="primary", size="lg")
+                generate_btn = gr.Button(
+                    "🎨 Generate Art", variant="primary", size="lg"
+                )
 
         with gr.Column(scale=1):
             output_image = gr.Image(label="Generated Artwork", type="pil")
@@ -193,7 +198,13 @@ with gr.Blocks(title="Style Mixer", theme=gr.themes.Soft()) as demo:
 
     gr.Examples(
         examples=EXAMPLES,
-        inputs=[style1_dropdown, style2_dropdown, blend_slider, subject_dropdown, custom_subject],
+        inputs=[
+            style1_dropdown,
+            style2_dropdown,
+            blend_slider,
+            subject_dropdown,
+            custom_subject,
+        ],
         outputs=[output_image, output_description],
         fn=mix_styles,
         cache_examples=False,
@@ -202,13 +213,25 @@ with gr.Blocks(title="Style Mixer", theme=gr.themes.Soft()) as demo:
     # Event handlers
     generate_btn.click(
         fn=mix_styles,
-        inputs=[style1_dropdown, style2_dropdown, blend_slider, subject_dropdown, custom_subject],
+        inputs=[
+            style1_dropdown,
+            style2_dropdown,
+            blend_slider,
+            subject_dropdown,
+            custom_subject,
+        ],
         outputs=[output_image, output_description],
     )
 
     random_btn.click(
         fn=random_mix,
-        outputs=[style1_dropdown, style2_dropdown, blend_slider, subject_dropdown, custom_subject],
+        outputs=[
+            style1_dropdown,
+            style2_dropdown,
+            blend_slider,
+            subject_dropdown,
+            custom_subject,
+        ],
     )
 
     gr.Markdown("""

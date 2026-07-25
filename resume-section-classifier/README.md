@@ -116,7 +116,9 @@ classifier = pipeline(
     model="gr8monk3ys/resume-section-classifier",
 )
 
-result = classifier("Bachelor of Science in Computer Science, Stanford University, 2023. GPA: 3.9/4.0")
+result = classifier(
+    "Bachelor of Science in Computer Science, Stanford University, 2023. GPA: 3.9/4.0"
+)
 print(result)
 # [{'label': 'education', 'score': 0.98}]
 ```

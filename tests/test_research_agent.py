@@ -5,7 +5,9 @@ import numpy as np
 from conftest import load_local_module
 
 agent = load_local_module("research_agent", "research-assistant-space/agent.py")
-retrieval = load_local_module("research_retrieval", "research-assistant-space/retrieval.py")
+retrieval = load_local_module(
+    "research_retrieval", "research-assistant-space/retrieval.py"
+)
 
 
 # --- agent: query planning -------------------------------------------------
@@ -57,11 +59,18 @@ def test_answer_end_to_end_with_fakes():
         return "Attention enables long-range modeling [1]."
 
     def fake_retriever(query, k):
-        return [{"title": f"paper-{query}", "abstract": "a", "year": "2020", "url": "u"}]
+        return [
+            {"title": f"paper-{query}", "abstract": "a", "year": "2020", "url": "u"}
+        ]
 
-    result = agent.answer("How do transformers work?", fake_retriever, fake_chat, max_queries=2)
+    result = agent.answer(
+        "How do transformers work?", fake_retriever, fake_chat, max_queries=2
+    )
     assert result["queries"] == ["transformers", "attention"]
-    assert [p["title"] for p in result["papers"]] == ["paper-transformers", "paper-attention"]
+    assert [p["title"] for p in result["papers"]] == [
+        "paper-transformers",
+        "paper-attention",
+    ]
     assert "[1]" in result["answer"]
     assert calls == {"plan": 1, "synth": 1}
 

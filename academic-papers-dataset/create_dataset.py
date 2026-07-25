@@ -226,7 +226,9 @@ def save_dataset(dataset_dict: DatasetDict, output_dir: Path) -> None:
     for split_name, split_ds in dataset_dict.items():
         parquet_path = output_dir / f"{split_name}.parquet"
         split_ds.to_parquet(str(parquet_path))
-        LOG.info("Saved %s split (%d rows) -> %s", split_name, len(split_ds), parquet_path)
+        LOG.info(
+            "Saved %s split (%d rows) -> %s", split_name, len(split_ds), parquet_path
+        )
 
 
 def push_to_hub(dataset_dict: DatasetDict, repo_id: str) -> None:

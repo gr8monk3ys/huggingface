@@ -20,11 +20,17 @@ SPACES_WITH_HELPER = sorted(p.parent.name for p in ROOT.glob("*/hf_client.py"))
 
 
 def test_friendly_error_rate_limit():
-    assert "rate-limited" in hf_client.friendly_error(Exception("429 Too Many Requests")).lower()
+    assert (
+        "rate-limited"
+        in hf_client.friendly_error(Exception("429 Too Many Requests")).lower()
+    )
 
 
 def test_friendly_error_loading():
-    assert "warming up" in hf_client.friendly_error(Exception("Model is currently loading")).lower()
+    assert (
+        "warming up"
+        in hf_client.friendly_error(Exception("Model is currently loading")).lower()
+    )
 
 
 def test_friendly_error_auth():

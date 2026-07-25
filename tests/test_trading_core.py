@@ -86,7 +86,9 @@ def test_build_signal_table_empty_when_no_signals():
 def test_compute_indicators_adds_columns():
     ta = pytest.importorskip("ta")  # noqa: F841 - skip if 'ta' isn't installed
     close = np.linspace(100, 160, 60)
-    df = pd.DataFrame({"Open": close, "High": close + 1, "Low": close - 1, "Close": close})
+    df = pd.DataFrame(
+        {"Open": close, "High": close + 1, "Low": close - 1, "Close": close}
+    )
     out = core.compute_indicators(df)
     for col in ("SMA_20", "SMA_50", "RSI", "MACD", "BB_Upper"):
         assert col in out.columns

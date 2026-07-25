@@ -52,6 +52,7 @@ client = make_client(MODEL_ID)
 # Utility functions
 # ---------------------------------------------------------------------------
 
+
 def detect_language(code: str) -> str:
     """Attempt to detect the programming language."""
     try:
@@ -87,6 +88,7 @@ def format_code_html(code: str, language: str) -> str:
 # Main explanation function
 # ---------------------------------------------------------------------------
 
+
 def explain_code(code: str, language: str, level: str) -> tuple[str, str]:
     """Generate an explanation for the provided code."""
     if not code.strip():
@@ -98,7 +100,9 @@ def explain_code(code: str, language: str, level: str) -> tuple[str, str]:
         detected_lang = detect_language(code)
 
     # Build prompt
-    level_instruction = EXPLANATION_LEVELS.get(level, EXPLANATION_LEVELS["Intermediate"])
+    level_instruction = EXPLANATION_LEVELS.get(
+        level, EXPLANATION_LEVELS["Intermediate"]
+    )
     lexer_hint = detected_lang.split()[0].lower() if detected_lang.strip() else ""
 
     system_prompt = f"You are an expert programming tutor. {level_instruction}"
@@ -138,7 +142,9 @@ Keep your explanation clear, accurate, and educational."""
         explanation = completion.choices[0].message.content.strip()
 
         # Add language badge
-        explanation = f"**Detected Language:** `{detected_lang}`\n\n---\n\n{explanation}"
+        explanation = (
+            f"**Detected Language:** `{detected_lang}`\n\n---\n\n{explanation}"
+        )
 
         # Format the code with syntax highlighting
         formatted_code = format_code_html(code, detected_lang)

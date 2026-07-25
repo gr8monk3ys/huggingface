@@ -42,8 +42,17 @@ DATA_DIR: Path = Path(__file__).resolve().parent / "data"
 PLOTS_DIR: Path = Path(__file__).resolve().parent / "plots"
 
 # Colour palette (colour-blind friendly, adapted from Tol's muted scheme).
-PALETTE = ["#332288", "#88CCEE", "#44AA99", "#117733", "#999933",
-           "#DDCC77", "#CC6677", "#882255", "#AA4499"]
+PALETTE = [
+    "#332288",
+    "#88CCEE",
+    "#44AA99",
+    "#117733",
+    "#999933",
+    "#DDCC77",
+    "#CC6677",
+    "#882255",
+    "#AA4499",
+]
 
 # ---------------------------------------------------------------------------
 # Loading helpers
@@ -93,7 +102,9 @@ def print_summary(df: pd.DataFrame) -> None:
         dates = pd.to_datetime(df["published"], errors="coerce")
         valid = dates.dropna()
         if len(valid) > 0:
-            print(f"  Published date range   : {valid.min():%Y-%m-%d} to {valid.max():%Y-%m-%d}")
+            print(
+                f"  Published date range   : {valid.min():%Y-%m-%d} to {valid.max():%Y-%m-%d}"
+            )
 
     # Authors
     author_counts = df["authors"].apply(len)
@@ -117,7 +128,7 @@ def print_summary(df: pd.DataFrame) -> None:
 
     # DOI availability
     has_doi = (df["doi"].str.len() > 0).sum()
-    print(f"\n  Papers with DOI        : {has_doi:,} ({100*has_doi/len(df):.1f}%)")
+    print(f"\n  Papers with DOI        : {has_doi:,} ({100 * has_doi / len(df):.1f}%)")
 
     print(f"\n{separator}\n")
 
@@ -151,7 +162,9 @@ def top_tfidf_terms(
     for group, sub_df in df.groupby(group_col):
         texts = sub_df[text_col].tolist()
         if len(texts) < 10:
-            LOG.warning("Skipping group %s — too few documents (%d).", group, len(texts))
+            LOG.warning(
+                "Skipping group %s — too few documents (%d).", group, len(texts)
+            )
             continue
 
         tfidf_matrix = vectorizer.fit_transform(texts)
@@ -208,10 +221,20 @@ def plot_abstract_length_histogram(df: pd.DataFrame, output_dir: Path) -> None:
 
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.hist(lengths, bins=50, color=PALETTE[0], edgecolor="white", alpha=0.85)
-    ax.axvline(lengths.median(), color=PALETTE[6], linestyle="--", linewidth=1.5,
-               label=f"Median ({lengths.median():.0f} words)")
-    ax.axvline(lengths.mean(), color=PALETTE[4], linestyle=":", linewidth=1.5,
-               label=f"Mean ({lengths.mean():.0f} words)")
+    ax.axvline(
+        lengths.median(),
+        color=PALETTE[6],
+        linestyle="--",
+        linewidth=1.5,
+        label=f"Median ({lengths.median():.0f} words)",
+    )
+    ax.axvline(
+        lengths.mean(),
+        color=PALETTE[4],
+        linestyle=":",
+        linewidth=1.5,
+        label=f"Mean ({lengths.mean():.0f} words)",
+    )
     ax.set_xlabel("Abstract Length (words)")
     ax.set_ylabel("Frequency")
     ax.set_title("Distribution of Abstract Lengths")

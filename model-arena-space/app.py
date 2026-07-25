@@ -90,6 +90,7 @@ vote_counts = {model: {"wins": 0, "battles": 0} for model in MODELS}
 # Core Functions
 # ---------------------------------------------------------------------------
 
+
 def get_model_response(model_id: str, prompt: str, max_tokens: int = 500) -> tuple:
     """Get response from a model with timing."""
     client = make_client(model_id)

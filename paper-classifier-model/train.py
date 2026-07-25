@@ -252,7 +252,9 @@ def load_and_prepare_dataset(
         label_names = list(orig_feature.names)
         logger.info("Using %d labels from the dataset's ClassLabel.", len(label_names))
     elif isinstance(sample_label, str):
-        observed = sorted({v for split in raw.values() for v in split.unique(label_col)})
+        observed = sorted(
+            {v for split in raw.values() for v in split.unique(label_col)}
+        )
         if set(observed).issubset(set(fallback_label_names)):
             label_names = list(fallback_label_names)
         else:
@@ -313,7 +315,9 @@ def load_and_prepare_dataset(
 
     # Subsample if requested ---------------------------------------------
     if max_train_samples is not None:
-        raw["train"] = raw["train"].select(range(min(max_train_samples, len(raw["train"]))))
+        raw["train"] = raw["train"].select(
+            range(min(max_train_samples, len(raw["train"])))
+        )
     if max_eval_samples is not None:
         raw["validation"] = raw["validation"].select(
             range(min(max_eval_samples, len(raw["validation"])))
@@ -403,7 +407,11 @@ def main() -> None:
     logger.info("Seed set to %d", args.seed)
 
     # Device info
-    device = "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
+    device = (
+        "cuda"
+        if torch.cuda.is_available()
+        else ("mps" if torch.backends.mps.is_available() else "cpu")
+    )
     logger.info("Using device: %s", device)
 
     # Dataset (label space is derived from the dataset itself)

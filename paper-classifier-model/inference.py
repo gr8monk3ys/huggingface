@@ -110,9 +110,7 @@ class PaperClassifier:
         if top_k is not None:
             sorted_indices = sorted_indices[:top_k]
 
-        scores = {
-            self.id2label[int(idx)]: float(probs[idx]) for idx in sorted_indices
-        }
+        scores = {self.id2label[int(idx)]: float(probs[idx]) for idx in sorted_indices}
 
         best_idx = int(probs.argmax())
         return {

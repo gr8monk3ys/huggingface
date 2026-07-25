@@ -39,7 +39,10 @@ SPACES = {
 # local folder -> (Hub repo name, dir holding the trained weights)
 MODELS = {
     "paper-classifier-model": ("paper-classifier", "model"),
-    "resume-section-classifier": ("resume-section-classifier", "model_output/final_model"),
+    "resume-section-classifier": (
+        "resume-section-classifier",
+        "model_output/final_model",
+    ),
 }
 
 # local folder -> (Hub repo name, dir holding the parquet)
@@ -53,12 +56,21 @@ DATASETS = {
 SCRIPT_EXTS = {".py", ".txt", ".md"}
 
 # Weight/data dirs are uploaded wholesale; these never belong in them.
-ARTIFACT_IGNORE = ["__pycache__/*", "*.pyc", ".DS_Store", "optimizer.pt", "scheduler.pt", "rng_state.pth"]
+ARTIFACT_IGNORE = [
+    "__pycache__/*",
+    "*.pyc",
+    ".DS_Store",
+    "optimizer.pt",
+    "scheduler.pt",
+    "rng_state.pth",
+]
 
 
 def project_files(folder: Path):
     """Card + scripts + requirements at the project root only (never recursive)."""
-    return [p for p in sorted(folder.iterdir()) if p.is_file() and p.suffix in SCRIPT_EXTS]
+    return [
+        p for p in sorted(folder.iterdir()) if p.is_file() and p.suffix in SCRIPT_EXTS
+    ]
 
 
 def ensure_repo(api, repo_id, repo_type, dry_run):
@@ -84,7 +96,8 @@ def push_project(api, repo_id, repo_type, folder, dry_run):
         repo_id=repo_id,
         repo_type=repo_type,
         operations=[
-            CommitOperationAdd(path_in_repo=p.name, path_or_fileobj=str(p)) for p in files
+            CommitOperationAdd(path_in_repo=p.name, path_or_fileobj=str(p))
+            for p in files
         ],
         commit_message="Sync card and scripts from the monorepo",
     )
@@ -147,8 +160,14 @@ def main():
             repo_id = f"{NAMESPACE}/{repo}"
             ensure_repo(api, repo_id, "dataset", args.dry_run)
             push_project(api, repo_id, "dataset", ROOT / folder, args.dry_run)
-            push_artifacts(api, repo_id, "dataset", ROOT / folder / data_dir,
-                           args.dry_run, path_in_repo="data")
+            push_artifacts(
+                api,
+                repo_id,
+                "dataset",
+                ROOT / folder / data_dir,
+                args.dry_run,
+                path_in_repo="data",
+            )
 
     print("\nDone." + (" (dry run -- nothing uploaded)" if args.dry_run else ""))
 

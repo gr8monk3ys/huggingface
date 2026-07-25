@@ -24,6 +24,7 @@ dist/
 # Training / inference artifacts
 results/
 model/
+model_output/
 checkpoint-*/
 runs/
 wandb/
@@ -32,6 +33,7 @@ wandb/
 *.safetensors
 metrics.json
 label_mapping.json
+*.log
 
 # Data artifacts
 *.parquet

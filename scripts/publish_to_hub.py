@@ -53,7 +53,9 @@ DATASETS = {
 # Only these extensions are ever uploaded from a project root. An allowlist
 # rather than an ignore-list, so a stray venv or checkpoint cannot leak to
 # the Hub just because someone forgot to add it to a skip list.
-SCRIPT_EXTS = {".py", ".txt", ".md"}
+# .html/.css/.js are here for static Spaces (sdk: static), which ship a page
+# instead of an app.py.
+SCRIPT_EXTS = {".py", ".txt", ".md", ".html", ".css", ".js"}
 
 # Weight/data dirs are uploaded wholesale; these never belong in them.
 ARTIFACT_IGNORE = [

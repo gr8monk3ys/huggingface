@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ML Interview Drill</title>
+<meta name="description" content="Drill 15 machine learning and data science interview questions. Answers stay redacted until you ask for them.">
+<style>
+  :root {
+    /* Blue-book exam paper, not cream. Pen blue, not terracotta. */
+    --paper:   #edf0f4;
+    --card:    #f8fafc;
+    --ink:     #16202b;
+    --slate:   #5a6b7c;
+    --redact:  #1f2b38;
+    --pen:     #2f5fe0;
+    --rule:    #c9d3de;
+
+    --serif: ui-serif, Charter, "Bitstream Charter", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    --sans:  ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono:  ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+    --wrap: 46rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper:  #101720;
+      --card:   #17202b;
+      --ink:    #e4ecf4;
+      --slate:  #90a2b4;
+      --redact: #2b3947;
+      --pen:    #7ea2ff;
+      --rule:   #2a3644;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 0 1.25rem 5rem;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: var(--wrap); margin: 0 auto; }
+
+  /* ---- masthead ---------------------------------------------------- */
+  .masthead {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 2.25rem 0 1rem;
+    border-bottom: 1px solid var(--rule);
+    flex-wrap: wrap;
+  }
+  .wordmark {
+    font-family: var(--mono);
+    font-size: 0.8125rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin: 0;
+  }
+  .bank {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--slate);
+    letter-spacing: 0.04em;
+  }
+
+  /* ---- mode switch ------------------------------------------------- */
+  .modes { display: flex; gap: 0; margin: 1.25rem 0 2rem; }
+  .mode {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.55rem 1.1rem;
+    background: none;
+    color: var(--slate);
+    border: 1px solid var(--rule);
+    cursor: pointer;
+  }
+  .mode + .mode { border-left: none; }
+  .mode[aria-selected="true"] {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  .mode:focus-visible, .btn:focus-visible, .chip:focus-visible,
+  .search:focus-visible, .disclose:focus-visible {
+    outline: 2px solid var(--pen);
+    outline-offset: 2px;
+  }
+
+  /* ---- question card ----------------------------------------------- */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    padding: 1.75rem;
+  }
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--slate);
+    margin-bottom: 1.1rem;
+  }
+  .prompt {
+    font-family: var(--serif);
+    font-size: clamp(1.4rem, 1.1rem + 1.4vw, 1.9rem);
+    line-height: 1.28;
+    font-weight: 400;
+    margin: 0 0 1.5rem;
+    letter-spacing: -0.01em;
+  }
+
+  /* difficulty as ordinal segments -- difficulty is genuinely ordered */
+  .diff { display: inline-flex; gap: 3px; align-items: center; }
+  .seg { width: 10px; height: 4px; background: var(--rule); display: block; }
+  .seg.on { background: var(--slate); }
+
+  /* ---- the signature: redacted answer ------------------------------ */
+  .answer-wrap { position: relative; margin: 0 0 1.25rem; }
+  .answer {
+    margin: 0;
+    line-height: 1.75;
+    opacity: 1;
+    transition: opacity 0.25s ease 0.28s;
+  }
+  .answer-wrap[data-state="hidden"] .answer { opacity: 0; }
+
+  .redact {
+    position: absolute;
+    /* Height must match the text exactly: any overflow renders an extra
+       partial bar below the final line. */
+    inset: 0 -0.2em;
+    overflow: hidden;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      to bottom,
+      var(--redact) 0 1.2em,
+      transparent 1.2em 1.75em
+    );
+    clip-path: inset(0 0 0 0);
+    transition: clip-path 0.5s cubic-bezier(0.7, 0, 0.3, 1);
+  }
+  /* cut the final bar short so it reads as text, not a block */
+  .redact::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: 0.55em;
+    width: 38%;
+    height: 1.3em;
+    background: var(--card);
+  }
+  .answer-wrap[data-state="shown"] .redact { clip-path: inset(0 0 0 100%); }
+
+  .topics {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--slate);
+    margin: 0 0 1.5rem;
+  }
+  .answer-wrap[data-state="hidden"] ~ .topics { visibility: hidden; }
+
+  /* ---- buttons ----------------------------------------------------- */
+  .row { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+  .btn {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.7rem 1.2rem;
+    cursor: pointer;
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .btn.ghost { background: none; color: var(--ink); }
+  .btn:hover { border-color: var(--pen); }
+  .btn.ghost:hover { color: var(--pen); }
+  .btn[disabled] { opacity: 0.4; cursor: default; border-color: var(--rule); }
+
+  .progress {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    color: var(--slate);
+    letter-spacing: 0.06em;
+    margin-left: auto;
+  }
+
+  /* ---- filters ----------------------------------------------------- */
+  .filters { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--rule); }
+  .flabel {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--slate);
+    display: block;
+    margin: 0 0 0.6rem;
+  }
+  .chips { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+  .chip {
+    font-family: var(--sans);
+    font-size: 0.8125rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--rule);
+    background: none;
+    color: var(--slate);
+    cursor: pointer;
+    border-radius: 999px;
+  }
+  .chip[aria-pressed="true"] {
+    background: var(--pen);
+    border-color: var(--pen);
+    color: #fff;
+  }
+  @media (prefers-color-scheme: dark) {
+    .chip[aria-pressed="true"] { color: #0d1319; }
+  }
+
+  .search {
+    width: 100%;
+    font-family: var(--sans);
+    font-size: 1rem;
+    padding: 0.7rem 0.85rem;
+    border: 1px solid var(--rule);
+    background: var(--card);
+    color: var(--ink);
+  }
+
+  /* ---- browse list ------------------------------------------------- */
+  .count {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--slate);
+    margin: 1.5rem 0 0.75rem;
+  }
+  .item { border-top: 1px solid var(--rule); padding: 1.25rem 0; }
+  .item:last-child { border-bottom: 1px solid var(--rule); }
+  .iq {
+    font-family: var(--serif);
+    font-size: 1.125rem;
+    line-height: 1.35;
+    margin: 0 0 0.6rem;
+  }
+  .disclose {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--rule);
+    color: var(--pen);
+    padding: 0 0 2px;
+    cursor: pointer;
+  }
+  .ianswer { margin: 0.9rem 0 0; line-height: 1.75; }
+  .ianswer[hidden] { display: none; }
+
+  .empty {
+    padding: 2.5rem 0;
+    color: var(--slate);
+    font-family: var(--serif);
+    font-size: 1.0625rem;
+  }
+
+  .foot {
+    margin-top: 3rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--rule);
+    font-size: 0.875rem;
+    color: var(--slate);
+  }
+  .foot a { color: var(--pen); }
+  .notes { margin-top: 1rem; }
+  .notes summary {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .notes ol { padding-left: 1.2rem; line-height: 1.7; }
+
+  [hidden] { display: none !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .redact, .answer { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <h1 class="wordmark">ML Interview Drill</h1>
+    <span class="bank" id="bank"></span>
+  </header>
+
+  <div class="modes" role="tablist" aria-label="Mode">
+    <button class="mode" role="tab" id="tab-drill" aria-selected="true" aria-controls="panel-drill">Drill</button>
+    <button class="mode" role="tab" id="tab-browse" aria-selected="false" aria-controls="panel-browse">Browse</button>
+  </div>
+
+  <!-- ================= DRILL ================= -->
+  <section id="panel-drill" role="tabpanel" aria-labelledby="tab-drill">
+    <div class="card">
+      <div class="meta" id="d-meta"></div>
+      <h2 class="prompt" id="d-prompt" aria-live="polite"></h2>
+
+      <div class="answer-wrap" id="d-wrap" data-state="hidden">
+        <p class="answer" id="d-answer"></p>
+        <div class="redact" id="d-redact" aria-hidden="true"></div>
+      </div>
+      <p class="topics" id="d-topics"></p>
+
+      <div class="row">
+        <button class="btn" id="d-reveal" aria-expanded="false" aria-controls="d-answer">Reveal answer</button>
+        <button class="btn ghost" id="d-next">Next question</button>
+        <span class="progress" id="d-progress"></span>
+      </div>
+    </div>
+
+    <div class="filters">
+      <span class="flabel" id="lab-cat">Category</span>
+      <div class="chips" id="d-cats" role="group" aria-labelledby="lab-cat"></div>
+      <span class="flabel" id="lab-diff">Difficulty</span>
+      <div class="chips" id="d-diffs" role="group" aria-labelledby="lab-diff"></div>
+      <span class="flabel" id="lab-co">Asked at</span>
+      <div class="chips" id="d-cos" role="group" aria-labelledby="lab-co"></div>
+    </div>
+  </section>
+
+  <!-- ================= BROWSE ================= -->
+  <section id="panel-browse" role="tabpanel" aria-labelledby="tab-browse" hidden>
+    <label class="flabel" for="b-search">Search questions and answers</label>
+    <input class="search" id="b-search" type="search" placeholder="attention, overfitting, sample size&hellip;" autocomplete="off">
+
+    <div class="filters">
+      <span class="flabel" id="lab-bcat">Category</span>
+      <div class="chips" id="b-cats" role="group" aria-labelledby="lab-bcat"></div>
+      <span class="flabel" id="lab-bdiff">Difficulty</span>
+      <div class="chips" id="b-diffs" role="group" aria-labelledby="lab-bdiff"></div>
+      <span class="flabel" id="lab-bco">Asked at</span>
+      <div class="chips" id="b-cos" role="group" aria-labelledby="lab-bco"></div>
+    </div>
+
+    <p class="count" id="b-count" aria-live="polite"></p>
+    <div id="b-list"></div>
+  </section>
+
+  <footer class="foot">
+    <p>Every question and answer is built into this page &mdash; no server, nothing sent anywhere.</p>
+    <details class="notes">
+      <summary>Prep notes</summary>
+      <ol>
+        <li><strong>Say it out loud.</strong> Reading an answer you recognise is not the same as producing one.</li>
+        <li><strong>Reach for trade-offs.</strong> Most of these have no single right answer; name the conditions that change it.</li>
+        <li><strong>Tie it to your own work.</strong> Interviewers follow up on whatever you claim to have built.</li>
+        <li><strong>Ask what is fixed.</strong> Clarifying constraints is part of the answer, especially on the system-design questions.</li>
+      </ol>
+    </details>
+    <p>Built by <a href="https://huggingface.co/gr8monk3ys">Lorenzo Scaturchio</a></p>
+  </footer>
+</div>
+
+<script id="questions" type="application/json">[{"id":"1","question":"Explain the difference between Type I and Type II errors.","answer":"Type I error (false positive) occurs when we reject a true null hypothesis. Type II error (false negative) occurs when we fail to reject a false null hypothesis. In ML terms, Type I is like flagging a legitimate transaction as fraud, while Type II is missing actual fraud. The tradeoff between these errors is controlled by the significance level (alpha) and power (1-beta) of the test.","category":"Statistics","difficulty":"easy","company_tags":["Google","Meta","Amazon"],"topic_tags":["hypothesis testing","statistical inference"]},{"id":"2","question":"What is the Central Limit Theorem and why is it important?","answer":"The Central Limit Theorem states that the sampling distribution of the sample mean approaches a normal distribution as sample size increases, regardless of the population's distribution. This is crucial because it allows us to make inferences about population parameters using normal distribution properties, enables hypothesis testing and confidence intervals, and justifies many statistical methods even when the underlying data isn't normally distributed.","category":"Statistics","difficulty":"easy","company_tags":["Google","Meta","Netflix"],"topic_tags":["probability","distributions"]},{"id":"3","question":"How would you handle multicollinearity in a regression model?","answer":"Multicollinearity can be addressed by: 1) Removing highly correlated features based on VIF (Variance Inflation Factor) > 5-10, 2) Using regularization (Ridge/Lasso) which shrinks correlated coefficients, 3) PCA to create uncorrelated components, 4) Domain knowledge to select the most meaningful feature among correlated ones. The choice depends on whether you need interpretable coefficients (remove features) or just prediction (regularization).","category":"Statistics","difficulty":"medium","company_tags":["Meta","Airbnb","Uber"],"topic_tags":["regression","feature selection"]},{"id":"4","question":"Explain the bias-variance tradeoff.","answer":"The bias-variance tradeoff describes the tension between two sources of prediction error. High bias means the model is too simple and underfits (e.g., linear regression on nonlinear data). High variance means the model is too complex and overfits (e.g., unpruned decision tree). Total error = Bias² + Variance + Irreducible noise. We balance this through model selection, regularization, and ensemble methods. Cross-validation helps find the sweet spot.","category":"ML Theory","difficulty":"easy","company_tags":["Google","Amazon","Microsoft"],"topic_tags":["fundamentals","model selection"]},{"id":"5","question":"What's the difference between bagging and boosting?","answer":"Bagging (Bootstrap Aggregating) trains models in parallel on random subsets of data, then averages predictions. It reduces variance (Random Forest). Boosting trains models sequentially, with each model focusing on errors of previous ones. It reduces bias (XGBoost, AdaBoost). Bagging works well when base models overfit; boosting works well when they underfit. Boosting is more prone to overfitting but often achieves higher accuracy with proper tuning.","category":"ML Theory","difficulty":"medium","company_tags":["Google","Meta","Apple"],"topic_tags":["ensemble","algorithms"]},{"id":"6","question":"How does gradient descent work and what are its variants?","answer":"Gradient descent iteratively updates parameters in the direction of steepest descent of the loss function: θ = θ - α∇L(θ). Variants include: Batch GD (uses all data, stable but slow), Stochastic GD (one sample, noisy but fast), Mini-batch GD (compromise). Advanced optimizers like Adam combine momentum (accumulates past gradients) and RMSprop (adaptive learning rates). Choice depends on dataset size, convergence needs, and computational resources.","category":"ML Theory","difficulty":"medium","company_tags":["Google","DeepMind","OpenAI"],"topic_tags":["optimization","training"]},{"id":"7","question":"Explain the vanishing gradient problem and how to address it.","answer":"Vanishing gradients occur when gradients become very small during backpropagation in deep networks, preventing early layers from learning. Causes include sigmoid/tanh activations (derivatives < 1). Solutions: 1) ReLU activation (gradient = 1 for positive inputs), 2) Batch/Layer normalization (stabilizes activations), 3) Residual connections (skip connections allow gradient flow), 4) Proper weight initialization (Xavier/He). Modern architectures like ResNet and Transformers incorporate these solutions.","category":"Deep Learning","difficulty":"medium","company_tags":["Google","Meta","OpenAI"],"topic_tags":["neural networks","training"]},{"id":"8","question":"What is the attention mechanism and why is it important?","answer":"Attention allows models to focus on relevant parts of input when producing output. It computes weighted combinations of values based on query-key similarity: Attention(Q,K,V) = softmax(QK^T/√d)V. Importance: 1) Captures long-range dependencies without sequential processing, 2) Provides interpretability through attention weights, 3) Enables parallelization (vs RNNs). Self-attention (Transformers) revolutionized NLP and is now used in vision (ViT) and other domains.","category":"Deep Learning","difficulty":"medium","company_tags":["Google","OpenAI","Anthropic"],"topic_tags":["transformers","architectures"]},{"id":"9","question":"How would you handle class imbalance in deep learning?","answer":"Strategies include: 1) Data-level: oversampling minority (SMOTE), undersampling majority, data augmentation, 2) Algorithm-level: class weights in loss function, focal loss (down-weights easy examples), threshold adjustment, 3) Ensemble: combine models trained on balanced subsets. For neural networks specifically: stratified batching, two-phase training (pretrain on balanced, fine-tune on original). Evaluation should use precision-recall curves and F1 rather than accuracy.","category":"Deep Learning","difficulty":"hard","company_tags":["Amazon","PayPal","Stripe"],"topic_tags":["imbalanced data","training"]},{"id":"10","question":"Explain word embeddings and their evolution.","answer":"Word embeddings map words to dense vectors capturing semantic meaning. Evolution: 1) One-hot encoding (sparse, no semantics), 2) Word2Vec/GloVe (static embeddings from co-occurrence), 3) ELMo (contextualized via bidirectional LSTM), 4) BERT/GPT (contextualized via Transformers). Key insight: words with similar contexts have similar vectors. Modern embeddings are contextual (same word gets different vectors based on context) and can be fine-tuned for downstream tasks.","category":"NLP","difficulty":"medium","company_tags":["Google","OpenAI","Meta"],"topic_tags":["embeddings","representations"]},{"id":"11","question":"What are the key differences between BERT and GPT?","answer":"BERT (Bidirectional Encoder Representations from Transformers) uses masked language modeling and sees full context bidirectionally. Best for understanding tasks (classification, NER, QA). GPT (Generative Pre-trained Transformer) uses autoregressive language modeling, predicting next token left-to-right. Best for generation tasks. BERT is encoder-only, GPT is decoder-only. For tasks needing both understanding and generation, encoder-decoder (T5) or large autoregressive models (GPT-4) with in-context learning work well.","category":"NLP","difficulty":"medium","company_tags":["Google","OpenAI","Microsoft"],"topic_tags":["transformers","language models"]},{"id":"12","question":"Design a recommendation system for an e-commerce platform.","answer":"Components: 1) Data collection: user behavior (clicks, purchases, time), item features, context (time, device), 2) Candidate generation: collaborative filtering (user-item matrix factorization), content-based (item similarity), 3) Ranking: ML model combining features (user, item, context) to predict engagement, 4) Serving: precompute for cold start, real-time for logged-in users, 5) Feedback loop: A/B testing, handling cold start (popular items, explore/exploit). Key tradeoffs: latency vs personalization, diversity vs relevance, short vs long-term engagement.","category":"System Design","difficulty":"hard","company_tags":["Amazon","Netflix","Spotify"],"topic_tags":["recommendations","architecture"]},{"id":"13","question":"How would you design an ML pipeline for real-time fraud detection?","answer":"Architecture: 1) Data ingestion: Kafka for streaming transactions, 2) Feature engineering: real-time features (velocity, device fingerprint) + batch features (historical patterns), 3) Model: ensemble of rules + ML (isolation forest, XGBoost) for sub-100ms latency, 4) Serving: feature store for consistency, model versioning, 5) Feedback: human review loop, delayed labels, continuous retraining. Key considerations: class imbalance, adversarial adaptation, explainability for disputes, cost of false positives/negatives.","category":"System Design","difficulty":"hard","company_tags":["PayPal","Stripe","Square"],"topic_tags":["fraud","real-time systems"]},{"id":"14","question":"What are the most important feature engineering techniques?","answer":"Key techniques: 1) Numerical: scaling (StandardScaler, MinMax), log transform for skewed data, binning, polynomial features, 2) Categorical: one-hot encoding, target encoding (with smoothing to avoid leakage), frequency encoding, 3) Temporal: lag features, rolling statistics, cyclical encoding (sin/cos for hours), 4) Text: TF-IDF, embeddings, 5) Interactions: domain-driven feature combinations. The best technique depends on the algorithm (trees don't need scaling) and domain knowledge. Always validate with cross-validation.","category":"Feature Engineering","difficulty":"medium","company_tags":["Airbnb","Uber","Meta"],"topic_tags":["preprocessing","features"]},{"id":"15","question":"How do you determine sample size for an A/B test?","answer":"Sample size depends on: 1) Baseline conversion rate (p), 2) Minimum detectable effect (MDE), 3) Significance level (α, typically 0.05), 4) Power (1-β, typically 0.8). Formula: n = 2 * ((z_α/2 + z_β)² * p(1-p)) / MDE². Practical considerations: higher baseline = more power, smaller MDE needs more samples, account for multiple testing if many variants. Use power calculators. For ratio metrics, variance is harder to estimate—consider pre-experiment data analysis.","category":"A/B Testing","difficulty":"medium","company_tags":["Google","Meta","Netflix"],"topic_tags":["experimentation","statistics"]}]</script>
+<script>
+(function () {
+  "use strict";
+  var QS = JSON.parse(document.getElementById("questions").textContent);
+  var DIFF_ORDER = ["easy", "medium", "hard"];
+
+  var cats = Array.from(new Set(QS.map(function (q) { return q.category; }))).sort();
+  var cos = Array.from(new Set(QS.reduce(function (a, q) {
+    return a.concat(q.company_tags);
+  }, []))).sort();
+
+  document.getElementById("bank").textContent =
+    QS.length + " questions · " + cats.length + " categories";
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) { n.className = cls; }
+    if (text != null) { n.textContent = text; }
+    return n;
+  }
+
+  function diffMarks(level) {
+    var n = DIFF_ORDER.indexOf(level) + 1;
+    var box = el("span", "diff");
+    box.setAttribute("role", "img");
+    box.setAttribute("aria-label", level + " difficulty");
+    for (var i = 0; i < 3; i++) {
+      box.appendChild(el("span", i < n ? "seg on" : "seg"));
+    }
+    return box;
+  }
+
+  /* A filter group: pressed chips are an OR-set; empty set means no filter. */
+  function chipGroup(host, values, labels, onChange) {
+    var picked = new Set();
+    values.forEach(function (v, i) {
+      var b = el("button", "chip", labels ? labels[i] : v);
+      b.type = "button";
+      b.setAttribute("aria-pressed", "false");
+      b.addEventListener("click", function () {
+        if (picked.has(v)) { picked.delete(v); } else { picked.add(v); }
+        b.setAttribute("aria-pressed", picked.has(v) ? "true" : "false");
+        onChange();
+      });
+      host.appendChild(b);
+    });
+    return picked;
+  }
+
+  function matches(q, sel) {
+    if (sel.cats.size && !sel.cats.has(q.category)) { return false; }
+    if (sel.diffs.size && !sel.diffs.has(q.difficulty)) { return false; }
+    if (sel.cos.size && !q.company_tags.some(function (c) { return sel.cos.has(c); })) {
+      return false;
+    }
+    return true;
+  }
+
+  /* ---------------- drill ---------------- */
+  var dSel = { cats: null, diffs: null, cos: null };
+  var seen = [];
+  var served = 0;
+  var current = null;
+
+  var wrap = document.getElementById("d-wrap");
+  var revealBtn = document.getElementById("d-reveal");
+  var nextBtn = document.getElementById("d-next");
+
+  function conceal() {
+    wrap.setAttribute("data-state", "hidden");
+    document.getElementById("d-answer").setAttribute("aria-hidden", "true");
+    revealBtn.setAttribute("aria-expanded", "false");
+    revealBtn.textContent = "Reveal answer";
+    revealBtn.disabled = false;
+  }
+
+  function reveal() {
+    wrap.setAttribute("data-state", "shown");
+    document.getElementById("d-answer").removeAttribute("aria-hidden");
+    revealBtn.setAttribute("aria-expanded", "true");
+    revealBtn.textContent = "Answer shown";
+    revealBtn.disabled = true;
+  }
+
+  function draw(q) {
+    var meta = document.getElementById("d-meta");
+    meta.textContent = "";
+    meta.appendChild(el("span", null, q.category));
+    meta.appendChild(document.createTextNode("·"));
+    meta.appendChild(diffMarks(q.difficulty));
+    meta.appendChild(el("span", null, q.difficulty));
+    meta.appendChild(document.createTextNode("·"));
+    meta.appendChild(el("span", null, q.company_tags.join("  ")));
+
+    document.getElementById("d-prompt").textContent = q.question;
+    document.getElementById("d-answer").textContent = q.answer;
+    document.getElementById("d-topics").textContent = q.topic_tags.join(" · ");
+    document.getElementById("d-progress").textContent =
+      "no. " + served + " · " + poolSize() + " in pool";
+    conceal();
+  }
+
+  function pool() { return QS.filter(function (q) { return matches(q, dSel); }); }
+  function poolSize() { return pool().length; }
+
+  function nextQuestion() {
+    var p = pool();
+    if (!p.length) {
+      current = null;
+      document.getElementById("d-meta").textContent = "";
+      document.getElementById("d-prompt").textContent =
+        "Nothing matches those filters. Clear one to see questions again.";
+      document.getElementById("d-answer").textContent = "";
+      document.getElementById("d-topics").textContent = "";
+      document.getElementById("d-progress").textContent = "0 in pool";
+      wrap.setAttribute("data-state", "shown");
+      revealBtn.disabled = true;
+      return;
+    }
+    var fresh = p.filter(function (q) { return seen.indexOf(q.id) === -1; });
+    if (!fresh.length) { seen = []; fresh = p; }
+    var q = fresh[Math.floor(Math.random() * fresh.length)];
+    seen.push(q.id);
+    served += 1;
+    current = q;
+    draw(q);
+  }
+
+  function onDrillFilter() {
+    // Keep the visible question if it still qualifies; otherwise serve a new one.
+    if (current && matches(current, dSel)) {
+      document.getElementById("d-progress").textContent =
+        "no. " + served + " · " + poolSize() + " in pool";
+    } else {
+      seen = [];
+      nextQuestion();
+    }
+  }
+
+  dSel.cats = chipGroup(document.getElementById("d-cats"), cats, null, onDrillFilter);
+  dSel.diffs = chipGroup(document.getElementById("d-diffs"), DIFF_ORDER, null, onDrillFilter);
+  dSel.cos = chipGroup(document.getElementById("d-cos"), cos, null, onDrillFilter);
+
+  revealBtn.addEventListener("click", function () { if (current) { reveal(); } });
+  nextBtn.addEventListener("click", nextQuestion);
+
+  /* ---------------- browse ---------------- */
+  var bSel = { cats: null, diffs: null, cos: null };
+  var searchBox = document.getElementById("b-search");
+
+  function renderBrowse() {
+    var term = searchBox.value.trim().toLowerCase();
+    var list = QS.filter(function (q) {
+      if (!matches(q, bSel)) { return false; }
+      if (!term) { return true; }
+      // plain substring, so punctuation in the query can never break it
+      return (q.question + " " + q.answer).toLowerCase().indexOf(term) !== -1;
+    });
+
+    var host = document.getElementById("b-list");
+    host.textContent = "";
+    document.getElementById("b-count").textContent =
+      list.length === 1 ? "1 question" : list.length + " questions";
+
+    if (!list.length) {
+      host.appendChild(el("p", "empty",
+        "No question mentions “" + searchBox.value.trim() + "” under these filters."));
+      return;
+    }
+
+    list.forEach(function (q, i) {
+      var item = el("div", "item");
+      var meta = el("div", "meta");
+      meta.appendChild(el("span", null, q.category));
+      meta.appendChild(document.createTextNode("·"));
+      meta.appendChild(diffMarks(q.difficulty));
+      meta.appendChild(el("span", null, q.difficulty));
+      item.appendChild(meta);
+      item.appendChild(el("h3", "iq", q.question));
+
+      var ans = el("p", "ianswer", q.answer);
+      ans.id = "ba-" + q.id;
+      ans.hidden = true;
+
+      var btn = el("button", "disclose", "Show answer");
+      btn.type = "button";
+      btn.setAttribute("aria-expanded", "false");
+      btn.setAttribute("aria-controls", ans.id);
+      btn.addEventListener("click", function () {
+        var open = ans.hidden;
+        ans.hidden = !open;
+        btn.setAttribute("aria-expanded", open ? "true" : "false");
+        btn.textContent = open ? "Hide answer" : "Show answer";
+      });
+
+      item.appendChild(btn);
+      item.appendChild(ans);
+      host.appendChild(item);
+    });
+  }
+
+  bSel.cats = chipGroup(document.getElementById("b-cats"), cats, null, renderBrowse);
+  bSel.diffs = chipGroup(document.getElementById("b-diffs"), DIFF_ORDER, null, renderBrowse);
+  bSel.cos = chipGroup(document.getElementById("b-cos"), cos, null, renderBrowse);
+  searchBox.addEventListener("input", renderBrowse);
+
+  /* ---------------- modes ---------------- */
+  var tabs = [
+    { tab: document.getElementById("tab-drill"), panel: document.getElementById("panel-drill") },
+    { tab: document.getElementById("tab-browse"), panel: document.getElementById("panel-browse") }
+  ];
+  tabs.forEach(function (t) {
+    t.tab.addEventListener("click", function () {
+      tabs.forEach(function (o) {
+        var on = o === t;
+        o.tab.setAttribute("aria-selected", on ? "true" : "false");
+        o.panel.hidden = !on;
+      });
+    });
+  });
+
+  nextQuestion();
+  renderBrowse();
+})();
+</script>
+</body>
+</html>

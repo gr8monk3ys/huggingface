@@ -3,10 +3,8 @@ title: ML Interview Prep
 emoji: 🎯
 colorFrom: yellow
 colorTo: red
-sdk: gradio
-sdk_version: 5.31.0
-python_version: "3.10"
-app_file: app.py
+sdk: static
+app_file: index.html
 pinned: false
 license: mit
 short_description: Practice ML and Data Science interview questions
@@ -14,69 +12,52 @@ short_description: Practice ML and Data Science interview questions
 
 # ML Interview Prep
 
-An interactive tool for practicing machine learning and data science interview questions. Ships with 15 curated questions across 7 categories, each with a detailed expert answer. (The About tab computes these counts live from the question set.)
+A static, self-contained page for drilling machine learning and data science
+interview questions. 15 hand-written questions across 7 categories, each with a
+thorough answer and company/topic tags.
 
-## Features
+Answers ship **redacted** and stay covered until you ask for them, because
+reading an answer you recognise is not the same as producing one under pressure.
 
-### 15 Interview Questions
-A small, hand-written set of ML/DS interview questions, each paired with a thorough answer and company/topic tags.
+Everything runs in the browser. There is no server, no model call, and nothing
+you type leaves the page -- which also means it never sleeps and never queues.
 
-### 7 Categories
-- Statistics
-- ML Theory
-- Deep Learning
-- NLP
-- System Design
-- Feature Engineering
-- A/B Testing
+## Two modes
 
-### Three Difficulty Levels
-- **Easy** - Fundamentals and basic concepts
-- **Medium** - Applied knowledge and trade-offs
-- **Hard** - Advanced topics and edge cases
+**Drill** -- a random question from your filtered pool. The answer sits behind
+redaction bars until you press Reveal. Questions do not repeat until the pool is
+exhausted.
 
-### Tabs
+**Browse** -- the full set, with substring search over questions and answers, and
+answers collapsed so you can scan.
 
-**Quiz Mode**
-- Random questions based on your category and difficulty filters
-- Try to answer before revealing the solution
-- Per-session progress counter
+## Filters
 
-**Browse All**
-- Search and filter the full question set
-- Study specific topics in depth
+Category, difficulty, and **asked at** (company) -- all multi-select, and they
+combine. Picking nothing in a group means that group is not filtering.
 
-**About**
-- Live database statistics (total questions, categories, difficulty breakdown) and interview-prep tips
+| Group | Values |
+|-------|--------|
+| Category | Statistics, ML Theory, Deep Learning, NLP, System Design, Feature Engineering, A/B Testing |
+| Difficulty | easy, medium, hard (shown as ordinal marks, since difficulty is ordered) |
+| Asked at | 15 companies, from Google and Meta to Anthropic and Stripe |
 
-### Company Tags
-Questions are tagged with companies where similar questions are commonly asked (Google, Meta, Amazon, etc.).
+## Example questions
 
-## How to Use
+**Statistics (easy)**
+> Explain the difference between Type I and Type II errors.
 
-1. **Select categories** you want to practice
-2. **Choose difficulty** level
-3. **Use Quiz Mode** for random practice or **Browse All** to study
-4. **Start practicing!**
+**ML Theory (medium)**
+> Explain the bias-variance tradeoff.
 
-## Question Sources
+**System Design (hard)**
+> Design a recommendation system for an e-commerce platform.
 
-Questions are curated from:
-- Real interview experiences shared online
-- Common ML/DS interview patterns
-- Academic fundamentals
-- Industry best practices
+## Question sources
 
-## Example Questions
-
-**ML Theory (Medium):**
-> "Explain the bias-variance tradeoff and how it affects model selection."
-
-**Deep Learning (Hard):**
-> "How would you handle class imbalance in a neural network for fraud detection?"
-
-**System Design (Hard):**
-> "Design a real-time recommendation system for a streaming platform."
+Hand-written, drawing on common ML/DS interview patterns, academic fundamentals,
+and industry practice. The company tags indicate where similar questions are
+commonly reported, not that any specific question was asked verbatim.
 
 ## License
 

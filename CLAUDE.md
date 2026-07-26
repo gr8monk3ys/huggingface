@@ -21,7 +21,7 @@ huggingface/
 ├── code-explainer-space/      # Space: code explanations via Mistral-7B (HF Inference API)
 ├── prompt-enhancer-space/     # Space: prompt rewriter via Mistral-7B (HF Inference API)
 ├── model-arena-space/         # Space: side-by-side LLM comparison + voting
-├── ml-interview-space/        # Space: ML/DS interview question practice
+├── ml-interview-space/        # Space: ML/DS interview drill (STATIC — index.html, no server)
 ├── model-selector-space/      # Space: find HF models for a task (live Hub query + fallback)
 # --- Generative & Data Exploration ---
 ├── dataset-explorer-space/    # Space: visualize any HF dataset
@@ -32,6 +32,10 @@ huggingface/
 ## Conventions
 
 - **Spaces** use Gradio 5.31 (pinned `gradio>=5.31.0,<6.0.0`) with `app.py` as the entry point
+- **Exception:** `ml-interview-space` is a **static** Space (`sdk: static`, `index.html`, no
+  `requirements.txt`). Its data is local, so it needs no server — which means it is free, always
+  on, and unaffected by the Gradio/PRO gate. Prefer static for any Space that does not call a
+  model; a sleeping Gradio Space serves nobody.
 - **LLM/image Spaces** call the HuggingFace Inference API via `huggingface_hub.InferenceClient` and need an `HF_TOKEN` secret set in Space Settings
 - **Models** use HuggingFace Transformers Trainer API with early stopping
 - **Datasets** use HuggingFace Datasets library with Parquet storage

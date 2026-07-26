@@ -34,7 +34,7 @@ A collection of end-to-end machine learning projects published on the HuggingFac
 | [code-explainer-space](./code-explainer-space) | Space | Explains code snippets using Mistral-7B via the HuggingFace Inference API |
 | [prompt-enhancer-space](./prompt-enhancer-space) | Space | Rewrites and enriches prompts using Mistral-7B via the HuggingFace Inference API |
 | [model-arena-space](./model-arena-space) | Space | Compares two LLMs side-by-side on the same prompt with response voting |
-| [ml-interview-space](./ml-interview-space) | Space | Practice ML/DS interview questions with quiz and browse modes |
+| [ml-interview-space](./ml-interview-space) | Space | Drill ML/DS interview questions; answers stay redacted until revealed. Static page, so it runs entirely in the browser and never sleeps |
 | [model-selector-space](./model-selector-space) | Space | Finds top HuggingFace models for a task via a live Hub query (with curated fallback) |
 
 ### Generative & Data Exploration

@@ -1,5 +1,9 @@
 # HuggingFace ML Portfolio
 
+<p align="center">
+  <img src="docs/assets/hero.png" alt="huggingface preview" width="640">
+</p>
+
 A collection of end-to-end machine learning projects published on the HuggingFace Hub, spanning NLP, computer vision, generative AI, and full-stack ML application development. The portfolio contains 16 projects: datasets, fine-tuned models, and interactive Gradio Spaces.
 
 ## Projects

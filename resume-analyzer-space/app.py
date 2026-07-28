@@ -9,7 +9,6 @@ Author: Lorenzo Scaturchio (gr8monk3ys)
 License: MIT
 """
 
-import re
 import logging
 from functools import lru_cache
 from typing import Optional
@@ -18,8 +17,18 @@ import fitz  # PyMuPDF
 import gradio as gr
 import numpy as np
 from sentence_transformers import SentenceTransformer
-from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+
+from core import (
+    SCORED_SECTIONS,
+    analyze_section,
+    composite_score,
+    detect_sections,
+    extract_keywords,
+    find_matching_and_missing_keywords,
+    generate_suggestions,
+    keyword_overlap,
+)
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -34,49 +43,6 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
-RESUME_SECTIONS = {
-    "experience": [
-        "experience",
-        "work experience",
-        "professional experience",
-        "employment history",
-        "work history",
-        "career history",
-    ],
-    "education": [
-        "education",
-        "academic background",
-        "academic history",
-        "qualifications",
-        "certifications",
-        "degrees",
-    ],
-    "skills": [
-        "skills",
-        "technical skills",
-        "core competencies",
-        "competencies",
-        "proficiencies",
-        "technologies",
-        "tools",
-    ],
-    "projects": [
-        "projects",
-        "personal projects",
-        "portfolio",
-        "key projects",
-        "selected projects",
-    ],
-    "summary": [
-        "summary",
-        "professional summary",
-        "profile",
-        "objective",
-        "career objective",
-        "about me",
-        "overview",
-    ],
-}
 
 # ---------------------------------------------------------------------------
 # Example data shipped with the Space
@@ -208,167 +174,6 @@ def compute_semantic_similarity(text_a: str, text_b: str) -> float:
     return float(np.clip(similarity, 0.0, 1.0))
 
 
-def extract_keywords(texts: list[str], top_n: int = 30) -> list[list[str]]:
-    """
-    Use TF-IDF to extract the most important keywords from each document
-    in *texts*. Returns a list of keyword-lists, one per input document.
-    """
-    vectorizer = TfidfVectorizer(
-        stop_words="english",
-        max_features=500,
-        ngram_range=(1, 2),
-        token_pattern=r"(?u)\b[a-zA-Z][a-zA-Z+#.\-]{1,}\b",
-    )
-    tfidf_matrix = vectorizer.fit_transform(texts)
-    feature_names = np.array(vectorizer.get_feature_names_out())
-
-    results: list[list[str]] = []
-    for row_idx in range(tfidf_matrix.shape[0]):
-        row = tfidf_matrix[row_idx].toarray().flatten()
-        top_indices = row.argsort()[-top_n:][::-1]
-        keywords = [feature_names[i] for i in top_indices if row[i] > 0]
-        results.append(keywords)
-    return results
-
-
-def _normalize(text: str) -> str:
-    """Lowercase and strip extra whitespace."""
-    return re.sub(r"\s+", " ", text.lower()).strip()
-
-
-def find_matching_and_missing_keywords(
-    resume_text: str, job_keywords: list[str]
-) -> tuple[list[str], list[str]]:
-    """
-    Compare job-description keywords against the resume body.
-    Returns (matched, missing) keyword lists.
-    """
-    resume_lower = _normalize(resume_text)
-    matched, missing = [], []
-    for kw in job_keywords:
-        if _normalize(kw) in resume_lower:
-            matched.append(kw)
-        else:
-            missing.append(kw)
-    return matched, missing
-
-
-def detect_sections(resume_text: str) -> dict[str, str]:
-    """
-    Heuristically split a resume into named sections.
-    Returns a dict mapping canonical section names to their content.
-    """
-    lines = resume_text.split("\n")
-    current_section: Optional[str] = None
-    sections: dict[str, list[str]] = {}
-
-    for line in lines:
-        stripped = line.strip()
-        matched_section = _match_section_header(stripped)
-        if matched_section:
-            current_section = matched_section
-            sections.setdefault(current_section, [])
-        elif current_section:
-            sections[current_section].append(stripped)
-        else:
-            sections.setdefault("other", []).append(stripped)
-
-    return {name: "\n".join(content).strip() for name, content in sections.items()}
-
-
-def _match_section_header(line: str) -> Optional[str]:
-    """Return a canonical section name if *line* looks like a header, else None."""
-    cleaned = re.sub(r"[^a-z\s]", "", line.lower()).strip()
-    if not cleaned or len(cleaned) > 40:
-        return None
-    for canonical, variants in RESUME_SECTIONS.items():
-        if cleaned in variants:
-            return canonical
-    return None
-
-
-def analyze_section(
-    section_name: str, section_text: str, job_text: str
-) -> dict[str, object]:
-    """Compute a per-section relevance score and short commentary."""
-    if not section_text.strip():
-        return {
-            "score": 0.0,
-            "comment": f"No {section_name} section detected in the resume.",
-        }
-    score = compute_semantic_similarity(section_text, job_text)
-    pct = round(score * 100, 1)
-
-    if pct >= 70:
-        quality = "Strong"
-    elif pct >= 45:
-        quality = "Moderate"
-    else:
-        quality = "Weak"
-
-    comment = f"{quality} alignment ({pct}%) with the job description."
-    return {"score": score, "comment": comment}
-
-
-def generate_suggestions(
-    missing_keywords: list[str],
-    section_scores: dict[str, dict],
-    overall_score: float,
-) -> list[str]:
-    """Return a list of actionable improvement suggestions."""
-    suggestions: list[str] = []
-
-    if overall_score < 0.45:
-        suggestions.append(
-            "Your resume has low overall alignment with this job description. "
-            "Consider tailoring it more directly to the role's requirements."
-        )
-
-    # Missing keywords
-    if missing_keywords:
-        top_missing = missing_keywords[:10]
-        suggestions.append(
-            "Add these high-value keywords or phrases where truthfully applicable: "
-            + ", ".join(f'"{kw}"' for kw in top_missing)
-            + "."
-        )
-
-    # Section-specific advice
-    for name, data in section_scores.items():
-        score = data["score"]
-        if name == "experience" and score < 0.5:
-            suggestions.append(
-                "Strengthen your Experience section by using action verbs and "
-                "quantifiable achievements that mirror the job requirements."
-            )
-        if name == "skills" and score < 0.5:
-            suggestions.append(
-                "Your Skills section could be improved. List specific tools, "
-                "frameworks, and technologies mentioned in the job posting."
-            )
-        if name == "education" and score < 0.3:
-            suggestions.append(
-                "Consider highlighting relevant coursework, certifications, or "
-                "academic projects in your Education section."
-            )
-
-    if "summary" not in section_scores or not section_scores.get("summary", {}).get(
-        "score", 0
-    ):
-        suggestions.append(
-            "Add a Professional Summary at the top of your resume that directly "
-            "addresses the key requirements of this role."
-        )
-
-    if not suggestions:
-        suggestions.append(
-            "Your resume is well-aligned with this job description. "
-            "Keep refining with specific metrics and results."
-        )
-
-    return suggestions
-
-
 # =========================================================================
 # Main analysis orchestrator
 # =========================================================================
@@ -410,12 +215,12 @@ def run_analysis(
         resume_text, job_keywords
     )
 
-    keyword_overlap = len(matched_kw) / max(len(job_keywords), 1)
+    overlap = keyword_overlap(matched_kw, job_keywords)
 
     # ------------------------------------------------------------------
     # 3. Composite score  (60% semantic + 40% keyword overlap)
     # ------------------------------------------------------------------
-    composite = 0.6 * raw_similarity + 0.4 * keyword_overlap
+    composite = composite_score(raw_similarity, overlap)
     overall_pct = round(composite * 100, 1)
 
     # ------------------------------------------------------------------
@@ -423,9 +228,11 @@ def run_analysis(
     # ------------------------------------------------------------------
     sections = detect_sections(resume_text)
     section_scores: dict[str, dict] = {}
-    for sec_name in ["summary", "experience", "education", "skills", "projects"]:
+    for sec_name in SCORED_SECTIONS:
         sec_text = sections.get(sec_name, "")
-        section_scores[sec_name] = analyze_section(sec_name, sec_text, job_description)
+        section_scores[sec_name] = analyze_section(
+            sec_name, sec_text, job_description, compute_semantic_similarity
+        )
 
     # ------------------------------------------------------------------
     # 5. Suggestions
@@ -436,7 +243,7 @@ def run_analysis(
     # Format outputs as Markdown
     # ------------------------------------------------------------------
     overview_md = _format_overview(
-        overall_pct, raw_similarity, keyword_overlap, matched_kw, missing_kw
+        overall_pct, raw_similarity, overlap, matched_kw, missing_kw
     )
     keywords_md = _format_keywords(
         resume_keywords, job_keywords, matched_kw, missing_kw

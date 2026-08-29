@@ -7,6 +7,10 @@ on:
 
 permissions: read-all
 
+concurrency:
+  group: org-gitleaks-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   gitleaks:
     uses: gr8monk3ys/org-workflows/.github/workflows/reusable-gitleaks.yml@2659a9a32c4e6e3858f69a2f502210941a886d5a

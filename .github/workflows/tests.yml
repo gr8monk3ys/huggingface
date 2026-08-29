@@ -9,11 +9,6 @@ name: tests
 # Doc-only changes are skipped, since nothing here tests Markdown.
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - "**.md"
-      - "LICENSE"
   pull_request:
     paths-ignore:
       - "**.md"

@@ -43,5 +43,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
+      # Added as a step on this job rather than a workflow of its own: Actions
+      # bills per job-minute, and checkout + setup-python already dominate this
+      # one, so linting here costs seconds instead of a whole extra minute
+      # against the budget described above. org-precommit still runs the full
+      # hook set monthly.
+      - name: Lint
+        run: ruff check .
+
       - name: Run tests
         run: pytest

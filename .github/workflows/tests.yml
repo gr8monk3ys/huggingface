@@ -6,13 +6,14 @@ name: tests
 # finishes in well under a second, so gating every push and PR costs ~1 minute
 # of the monthly budget per run while catching the regressions that matter.
 #
-# Doc-only changes are skipped, since nothing here tests Markdown.
+# It runs on EVERY pull request, with no paths filter. `pytest` is a required
+# status check on main, and a required check that is skipped is never reported
+# -- so a docs-only PR sat permanently BLOCKED, waiting for a run that by
+# construction could never happen. Skipping doc changes saved about a minute a
+# PR and cost the ability to merge them at all.
 
 on:
   pull_request:
-    paths-ignore:
-      - "**.md"
-      - "LICENSE"
   workflow_dispatch:
 
 permissions:

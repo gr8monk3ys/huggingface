@@ -18,7 +18,7 @@ from core import (
 )
 from hf_client import InferenceError, make_client, with_retry
 
-MODEL_ID = "mistralai/Mistral-7B-Instruct-v0.3"
+MODEL_ID = "mistralai/Mistral-7B-Instruct-v0.2"
 client = make_client(MODEL_ID)
 
 

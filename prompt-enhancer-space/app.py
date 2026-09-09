@@ -9,7 +9,7 @@ import gradio as gr
 from core import PROMPT_TYPES, InputError, enhance_prompt, example_for
 from hf_client import InferenceError, make_client, with_retry
 
-MODEL_ID = "mistralai/Mistral-7B-Instruct-v0.3"
+MODEL_ID = "mistralai/Mistral-7B-Instruct-v0.2"
 client = make_client(MODEL_ID)
 
 

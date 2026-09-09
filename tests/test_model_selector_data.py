@@ -79,7 +79,9 @@ def test_curated_models_carry_name_size_and_license(task):
 def test_every_curated_size_parses_to_something_positive(task):
     """A size that parses to 0 silently drops the model from every size filter."""
     for model in TASKS[task]["top_models"]:
-        assert parse_size(model["size"]) > 0, f"{task}: {model['name']} size={model['size']!r}"
+        assert parse_size(model["size"]) > 0, (
+            f"{task}: {model['name']} size={model['size']!r}"
+        )
 
 
 @pytest.mark.parametrize("task", TASKS)
@@ -113,9 +115,9 @@ def test_every_curated_model_falls_inside_at_least_one_band():
     for task, info in TASKS.items():
         for model in info["top_models"]:
             size = parse_size(model["size"])
-            assert any(
-                b["min"] <= size <= b["max"] for b in SIZES.values()
-            ), f"{task}: {model['name']} ({model['size']}) matches no size band"
+            assert any(b["min"] <= size <= b["max"] for b in SIZES.values()), (
+                f"{task}: {model['name']} ({model['size']}) matches no size band"
+            )
 
 
 # --- code templates -------------------------------------------------------

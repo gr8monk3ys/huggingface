@@ -128,3 +128,22 @@ def test_describe_has_no_side_effects(fake_repo, only_demo):
     before = sorted(p.name for p in fake_repo.rglob("*"))
     publish.describe(publish.plan(fake_repo), fake_repo)
     assert sorted(p.name for p in fake_repo.rglob("*")) == before
+
+
+# --- what must never reach a dataset repo ---------------------------------
+def test_arrow_files_are_ignored_in_artifact_uploads():
+    """A dataset repo containing Arrow IPC files loses its Hub preview
+    entirely: "Datasets with Arrow IPC files are temporarily unavailable in
+    the dataset viewer". The parquet is the published format."""
+    import fnmatch
+
+    arrow = "hf_dataset/train/data-00000-of-00001.arrow"
+    assert any(fnmatch.fnmatch(arrow, pat) for pat in publish.ARTIFACT_IGNORE)
+
+
+def test_parquet_is_not_ignored():
+    """The guard above must not take the actual data with it."""
+    import fnmatch
+
+    for keep in ("train.parquet", "test.parquet"):
+        assert not any(fnmatch.fnmatch(keep, pat) for pat in publish.ARTIFACT_IGNORE)

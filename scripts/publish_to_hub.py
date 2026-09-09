@@ -74,6 +74,13 @@ NOT_PUBLISHED = {
 SCRIPT_EXTS = {".py", ".txt", ".md", ".html", ".css", ".js"}
 
 # Weight/data dirs are uploaded wholesale; these never belong in them.
+#
+# The .arrow entries are not housekeeping. A dataset repo containing Arrow IPC
+# files is refused by the Hub's dataset viewer -- "Datasets with Arrow IPC files
+# are temporarily unavailable in the dataset viewer" -- so uploading a
+# save_to_disk() dump alongside the parquet silently kills the preview on the
+# dataset page. The parquet is the published format; the arrow dump is a local
+# build artifact that happens to live in the same directory.
 ARTIFACT_IGNORE = [
     "__pycache__/*",
     "*.pyc",
@@ -81,6 +88,8 @@ ARTIFACT_IGNORE = [
     "optimizer.pt",
     "scheduler.pt",
     "rng_state.pth",
+    "*.arrow",
+    "*hf_dataset*",
 ]
 
 

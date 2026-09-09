@@ -3,10 +3,8 @@ title: Model Selector
 emoji: 🎯
 colorFrom: yellow
 colorTo: red
-sdk: gradio
-sdk_version: 5.31.0
-python_version: "3.10"
-app_file: app.py
+sdk: static
+app_file: index.html
 pinned: false
 license: mit
 short_description: Find the perfect HuggingFace model for your task
@@ -15,6 +13,7 @@ tags:
   - model-discovery
   - huggingface-hub
   - developer-tools
+  - static
 ---
 
 # Model Selector

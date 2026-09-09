@@ -13,22 +13,12 @@ import logging
 from functools import lru_cache
 from typing import Optional
 
-import fitz  # PyMuPDF
 import gradio as gr
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
-from core import (
-    SCORED_SECTIONS,
-    analyze_section,
-    composite_score,
-    detect_sections,
-    extract_keywords,
-    find_matching_and_missing_keywords,
-    generate_suggestions,
-    keyword_overlap,
-)
+from core import Analysis, InputError, PdfReadError, analyze
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -148,34 +138,19 @@ def _get_model() -> SentenceTransformer:
 
 
 # =========================================================================
-# Core analysis utilities
+# Adapter: the similarity function core.analyze is given
 # =========================================================================
 
 
-def extract_text_from_pdf(pdf_path: str) -> str:
-    """Extract plain text from a PDF file using PyMuPDF."""
-    try:
-        doc = fitz.open(pdf_path)
-        pages = [page.get_text() for page in doc]
-        doc.close()
-        text = "\n".join(pages).strip()
-        if not text:
-            raise ValueError("The PDF appears to contain no extractable text.")
-        return text
-    except Exception as exc:
-        logger.error("PDF extraction failed: %s", exc)
-        raise gr.Error(f"Could not read the PDF file: {exc}") from exc
-
-
 def compute_semantic_similarity(text_a: str, text_b: str) -> float:
-    """Return cosine similarity (0-1) between two texts using the sentence-transformer."""
+    """Cosine similarity (0-1) between two texts, via the sentence-transformer."""
     embeddings = _get_model().encode([text_a, text_b], convert_to_numpy=True)
     similarity = cosine_similarity([embeddings[0]], [embeddings[1]])[0][0]
     return float(np.clip(similarity, 0.0, 1.0))
 
 
 # =========================================================================
-# Main analysis orchestrator
+# Handler
 # =========================================================================
 
 
@@ -184,74 +159,24 @@ def run_analysis(
     job_description: str,
     pdf_file: Optional[str] = None,
 ) -> tuple[str, str, str, str]:
-    """
-    Run the full resume analysis pipeline.
-
-    Returns a 4-tuple of Markdown strings:
-        (overview, keywords_report, section_report, suggestions_report)
-    """
-    # ------------------------------------------------------------------
-    # Input resolution
-    # ------------------------------------------------------------------
-    if pdf_file is not None:
-        resume_text = extract_text_from_pdf(pdf_file)
-
-    if not resume_text or not resume_text.strip():
-        raise gr.Error("Please provide resume text or upload a PDF.")
-    if not job_description or not job_description.strip():
-        raise gr.Error("Please provide a job description.")
-
-    # ------------------------------------------------------------------
-    # 1. Semantic similarity
-    # ------------------------------------------------------------------
-    raw_similarity = compute_semantic_similarity(resume_text, job_description)
-
-    # ------------------------------------------------------------------
-    # 2. Keyword analysis
-    # ------------------------------------------------------------------
-    keyword_lists = extract_keywords([resume_text, job_description], top_n=30)
-    resume_keywords, job_keywords = keyword_lists[0], keyword_lists[1]
-    matched_kw, missing_kw = find_matching_and_missing_keywords(
-        resume_text, job_keywords
-    )
-
-    overlap = keyword_overlap(matched_kw, job_keywords)
-
-    # ------------------------------------------------------------------
-    # 3. Composite score  (60% semantic + 40% keyword overlap)
-    # ------------------------------------------------------------------
-    composite = composite_score(raw_similarity, overlap)
-    overall_pct = round(composite * 100, 1)
-
-    # ------------------------------------------------------------------
-    # 4. Section-by-section analysis
-    # ------------------------------------------------------------------
-    sections = detect_sections(resume_text)
-    section_scores: dict[str, dict] = {}
-    for sec_name in SCORED_SECTIONS:
-        sec_text = sections.get(sec_name, "")
-        section_scores[sec_name] = analyze_section(
-            sec_name, sec_text, job_description, compute_semantic_similarity
+    """Gradio handler: analyze, then render the four Markdown panes."""
+    try:
+        analysis = analyze(
+            resume_text,
+            job_description,
+            pdf_file,
+            similarity_fn=compute_semantic_similarity,
         )
+    except (InputError, PdfReadError) as exc:
+        logger.info("Analysis rejected: %s", exc)
+        raise gr.Error(str(exc)) from exc
 
-    # ------------------------------------------------------------------
-    # 5. Suggestions
-    # ------------------------------------------------------------------
-    suggestions = generate_suggestions(missing_kw, section_scores, composite)
-
-    # ------------------------------------------------------------------
-    # Format outputs as Markdown
-    # ------------------------------------------------------------------
-    overview_md = _format_overview(
-        overall_pct, raw_similarity, overlap, matched_kw, missing_kw
+    return (
+        _format_overview(analysis),
+        _format_keywords(analysis),
+        _format_sections(analysis.section_scores),
+        _format_suggestions(analysis.suggestions),
     )
-    keywords_md = _format_keywords(
-        resume_keywords, job_keywords, matched_kw, missing_kw
-    )
-    sections_md = _format_sections(section_scores)
-    suggest_md = _format_suggestions(suggestions)
-
-    return overview_md, keywords_md, sections_md, suggest_md
 
 
 # =========================================================================
@@ -266,50 +191,29 @@ def _score_bar(pct: float, width: int = 20) -> str:
     return f"`[{'=' * filled}{' ' * empty}]` **{pct}%**"
 
 
-def _format_overview(
-    overall_pct: float,
-    semantic_sim: float,
-    keyword_overlap: float,
-    matched: list[str],
-    missing: list[str],
-) -> str:
-    sem_pct = round(semantic_sim * 100, 1)
-    kw_pct = round(keyword_overlap * 100, 1)
-
-    if overall_pct >= 70:
-        verdict = "Excellent match - your resume aligns strongly with this role."
-    elif overall_pct >= 50:
-        verdict = (
-            "Good match - some targeted improvements could strengthen your application."
-        )
-    elif overall_pct >= 30:
-        verdict = "Partial match - significant tailoring is recommended."
-    else:
-        verdict = "Low match - consider whether this role fits your background or rewrite substantially."
-
+def _format_overview(analysis: Analysis) -> str:
     return (
         f"## Overall Match Score\n\n"
-        f"# {_score_bar(overall_pct)}\n\n"
-        f"**Verdict:** {verdict}\n\n"
+        f"# {_score_bar(analysis.overall_pct)}\n\n"
+        f"**Verdict:** {analysis.verdict}\n\n"
         f"---\n\n"
         f"### Score Breakdown\n\n"
         f"| Component | Score |\n"
         f"|---|---|\n"
-        f"| Semantic Similarity | {sem_pct}% |\n"
-        f"| Keyword Overlap | {kw_pct}% |\n"
-        f"| **Composite (60/40)** | **{overall_pct}%** |\n\n"
+        f"| Semantic Similarity | {analysis.semantic_pct}% |\n"
+        f"| Keyword Overlap | {analysis.keyword_overlap_pct}% |\n"
+        f"| **Composite (60/40)** | **{analysis.overall_pct}%** |\n\n"
         f"---\n\n"
-        f"**Matched Keywords:** {len(matched)} &nbsp;|&nbsp; "
-        f"**Missing Keywords:** {len(missing)}\n"
+        f"**Matched Keywords:** {len(analysis.matched_keywords)} &nbsp;|&nbsp; "
+        f"**Missing Keywords:** {len(analysis.missing_keywords)}\n"
     )
 
 
-def _format_keywords(
-    resume_kw: list[str],
-    job_kw: list[str],
-    matched: list[str],
-    missing: list[str],
-) -> str:
+def _format_keywords(analysis: Analysis) -> str:
+    resume_kw = analysis.resume_keywords
+    job_kw = analysis.job_keywords
+    matched = analysis.matched_keywords
+    missing = analysis.missing_keywords
     matched_str = (
         ", ".join(f"**{kw}**" for kw in matched) if matched else "_None detected_"
     )

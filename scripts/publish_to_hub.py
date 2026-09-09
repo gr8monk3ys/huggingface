@@ -3,17 +3,23 @@
 Publish every project in this monorepo to the HuggingFace Hub.
 
 Idempotent: the Hub dedupes by content hash, so re-running only transfers
-what actually changed. Requires `hf auth login` (or HF_TOKEN) beforehand.
+what actually changed. Publishing requires `hf auth login` (or HF_TOKEN).
 
 Usage:
     python scripts/publish_to_hub.py                 # publish everything
     python scripts/publish_to_hub.py --dry-run       # show the plan only
     python scripts/publish_to_hub.py --only spaces   # spaces|models|datasets
+
+Deciding what to upload and uploading it are separate: :func:`plan` is pure and
+imports nothing from ``huggingface_hub``, so ``--dry-run`` works with the
+library absent, and the plan can be asserted on without a network.
 """
 
 import argparse
 import sys
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Optional
 
 ROOT = Path(__file__).resolve().parent.parent
 NAMESPACE = "gr8monk3ys"
@@ -50,6 +56,16 @@ DATASETS = {
     "academic-papers-dataset": ("academic-papers-dataset", "data"),
 }
 
+# Top-level directories that are deliberately not published. Anything else
+# unmapped is an error rather than a silent skip: nothing used to reconcile
+# these tables against the filesystem, so a new or renamed project folder was
+# simply never uploaded, with no warning printed and no failure raised.
+NOT_PUBLISHED = {
+    "docs",
+    "scripts",
+    "tests",
+}
+
 # Only these extensions are ever uploaded from a project root. An allowlist
 # rather than an ignore-list, so a stray venv or checkpoint cannot leak to
 # the Hub just because someone forgot to add it to a skip list.
@@ -68,14 +84,148 @@ ARTIFACT_IGNORE = [
 ]
 
 
+class UnmappedProjectError(RuntimeError):
+    """A project folder is neither mapped to a Hub repo nor opted out."""
+
+
+@dataclass(frozen=True)
+class Upload:
+    """One repo's worth of work: what goes where, decided but not yet done."""
+
+    repo_id: str
+    repo_type: str  # "space" | "model" | "dataset"
+    folder: Path
+    files: tuple = ()
+    artifacts: Optional[Path] = None
+    artifacts_path_in_repo: str = ""
+
+    @property
+    def artifacts_missing(self) -> bool:
+        return self.artifacts is not None and not self.artifacts.is_dir()
+
+
+@dataclass
+class Plan:
+    """Everything a run would do, and what it noticed on the way."""
+
+    uploads: list = field(default_factory=list)
+    warnings: list = field(default_factory=list)
+
+
 def project_files(folder: Path):
-    """Card + scripts + requirements at the project root only (never recursive)."""
+    """Card + scripts + requirements at the project root only (never recursive).
+
+    Non-recursive on purpose, and the reason a Space cannot import from outside
+    its own folder -- see docs/adr/0001-vendoring-is-the-only-sharing-mechanism.md.
+    """
+    if not folder.is_dir():
+        return []
     return [
         p for p in sorted(folder.iterdir()) if p.is_file() and p.suffix in SCRIPT_EXTS
     ]
 
 
-def ensure_repo(api, repo_id, repo_type, dry_run) -> bool:
+def published_folders() -> set:
+    """Every folder name the three tables claim."""
+    return set(SPACES) | set(MODELS) | set(DATASETS)
+
+
+def check_reconciled(root: Path = ROOT) -> None:
+    """Fail if a project folder is neither mapped nor explicitly opted out.
+
+    Raises:
+        UnmappedProjectError: listing what is unmapped, or mapped but missing.
+    """
+    on_disk = {
+        p.name for p in root.iterdir() if p.is_dir() and not p.name.startswith(".")
+    }
+    mapped = published_folders()
+
+    unmapped = sorted(on_disk - mapped - NOT_PUBLISHED)
+    missing = sorted(mapped - on_disk)
+
+    problems = []
+    if unmapped:
+        problems.append(
+            "not mapped to a Hub repo and not in NOT_PUBLISHED: " + ", ".join(unmapped)
+        )
+    if missing:
+        problems.append("mapped but absent from disk: " + ", ".join(missing))
+
+    if problems:
+        raise UnmappedProjectError("; ".join(problems))
+
+
+def plan(root: Path = ROOT, only: Optional[str] = None) -> Plan:
+    """Decide what a run would upload. Pure: no network, no huggingface_hub.
+
+    Raises:
+        UnmappedProjectError: the tables and the filesystem disagree.
+    """
+    check_reconciled(root)
+    result = Plan()
+
+    def add(folder, repo, repo_type, artifacts=None, path_in_repo=""):
+        upload = Upload(
+            repo_id=f"{NAMESPACE}/{repo}",
+            repo_type=repo_type,
+            folder=root / folder,
+            files=tuple(project_files(root / folder)),
+            artifacts=(root / folder / artifacts) if artifacts else None,
+            artifacts_path_in_repo=path_in_repo,
+        )
+        if not upload.files:
+            result.warnings.append(f"{upload.repo_id}: no uploadable files at root")
+        if upload.artifacts_missing:
+            result.warnings.append(
+                f"{upload.repo_id}: missing {upload.artifacts.relative_to(root)}/"
+            )
+        result.uploads.append(upload)
+
+    if only in (None, "spaces"):
+        for folder, repo in SPACES.items():
+            add(folder, repo, "space")
+
+    if only in (None, "models"):
+        for folder, (repo, weights) in MODELS.items():
+            add(folder, repo, "model", artifacts=weights)
+
+    if only in (None, "datasets"):
+        for folder, (repo, data_dir) in DATASETS.items():
+            add(folder, repo, "dataset", artifacts=data_dir, path_in_repo="data")
+
+    return result
+
+
+def describe(plan_result: Plan, root: Path = ROOT) -> str:
+    """Render a plan for a human. No side effects, so --dry-run is just this."""
+    lines = []
+    current_type = None
+    for upload in plan_result.uploads:
+        if upload.repo_type != current_type:
+            current_type = upload.repo_type
+            lines.append(f"\n== {current_type.capitalize()}s ==")
+        for path in upload.files:
+            lines.append(
+                f"  {upload.repo_type}:{upload.repo_id}  <-  {path.relative_to(root)}"
+            )
+        if upload.artifacts is not None:
+            if upload.artifacts_missing:
+                lines.append(
+                    f"  !! missing: {upload.artifacts.relative_to(root)} -- skipped"
+                )
+            else:
+                dest = upload.artifacts_path_in_repo or "<root>"
+                lines.append(
+                    f"  {upload.repo_type}:{upload.repo_id}  <-  "
+                    f"{upload.artifacts.relative_to(root)}/ -> {dest}"
+                )
+    for warning in plan_result.warnings:
+        lines.append(f"  !! {warning}")
+    return "\n".join(lines)
+
+
+def ensure_repo(api, repo_id, repo_type) -> bool:
     """Make sure the repo exists. Returns False if it can't be used.
 
     Checks existence before attempting creation: ``create_repo`` still POSTs to
@@ -88,8 +238,6 @@ def ensure_repo(api, repo_id, repo_type, dry_run) -> bool:
     """
     from huggingface_hub.errors import HfHubHTTPError
 
-    if dry_run:
-        return True
     if api.repo_exists(repo_id=repo_id, repo_type=repo_type):
         return True
 
@@ -106,43 +254,33 @@ def ensure_repo(api, repo_id, repo_type, dry_run) -> bool:
         return False
 
 
-def push_project(api, repo_id, repo_type, folder, dry_run):
-    """Upload a project's root-level card/scripts as one atomic commit."""
+def execute(api, upload: Upload) -> None:
+    """Perform one planned Upload."""
     from huggingface_hub import CommitOperationAdd
 
-    files = project_files(folder)
-    for p in files:
-        print(f"  {repo_type}:{repo_id}  <-  {p.relative_to(ROOT)}")
-    if dry_run or not files:
+    if not ensure_repo(api, upload.repo_id, upload.repo_type):
         return
-    api.create_commit(
-        repo_id=repo_id,
-        repo_type=repo_type,
-        operations=[
-            CommitOperationAdd(path_in_repo=p.name, path_or_fileobj=str(p))
-            for p in files
-        ],
-        commit_message="Sync card and scripts from the monorepo",
-    )
 
+    if upload.files:
+        api.create_commit(
+            repo_id=upload.repo_id,
+            repo_type=upload.repo_type,
+            operations=[
+                CommitOperationAdd(path_in_repo=p.name, path_or_fileobj=str(p))
+                for p in upload.files
+            ],
+            commit_message="Sync card and scripts from the monorepo",
+        )
 
-def push_artifacts(api, repo_id, repo_type, src: Path, dry_run, path_in_repo=""):
-    """Upload a weights or data directory."""
-    if not src.is_dir():
-        print(f"  !! missing: {src.relative_to(ROOT)} -- skipped")
-        return
-    dest = path_in_repo or "<root>"
-    print(f"  {repo_type}:{repo_id}  <-  {src.relative_to(ROOT)}/ -> {dest}")
-    if dry_run:
-        return
-    api.upload_folder(
-        folder_path=str(src),
-        path_in_repo=path_in_repo,
-        repo_id=repo_id,
-        repo_type=repo_type,
-        ignore_patterns=ARTIFACT_IGNORE,
-        commit_message="Upload artifacts from the monorepo",
-    )
+    if upload.artifacts is not None and not upload.artifacts_missing:
+        api.upload_folder(
+            folder_path=str(upload.artifacts),
+            path_in_repo=upload.artifacts_path_in_repo,
+            repo_id=upload.repo_id,
+            repo_type=upload.repo_type,
+            ignore_patterns=ARTIFACT_IGNORE,
+            commit_message="Upload artifacts from the monorepo",
+        )
 
 
 def main():
@@ -151,52 +289,32 @@ def main():
     ap.add_argument("--only", choices=["spaces", "models", "datasets"])
     args = ap.parse_args()
 
+    try:
+        result = plan(ROOT, args.only)
+    except UnmappedProjectError as exc:
+        sys.exit(f"Publish plan is out of sync with the repo: {exc}")
+
+    print(describe(result, ROOT))
+
+    if args.dry_run:
+        print("\nDone. (dry run -- nothing uploaded)")
+        return
+
     from huggingface_hub import HfApi
     from huggingface_hub.errors import HfHubHTTPError, LocalTokenNotFoundError
 
     api = HfApi()
-    if not args.dry_run:
-        try:
-            user = api.whoami()["name"]
-        except (HfHubHTTPError, LocalTokenNotFoundError) as exc:
-            sys.exit(f"Not authenticated ({exc}). Run `hf auth login --force` first.")
-        if user != NAMESPACE:
-            sys.exit(f"Logged in as {user!r}, expected {NAMESPACE!r} -- aborting.")
+    try:
+        user = api.whoami()["name"]
+    except (HfHubHTTPError, LocalTokenNotFoundError) as exc:
+        sys.exit(f"Not authenticated ({exc}). Run `hf auth login --force` first.")
+    if user != NAMESPACE:
+        sys.exit(f"Logged in as {user!r}, expected {NAMESPACE!r} -- aborting.")
 
-    if args.only in (None, "spaces"):
-        print("\n== Spaces ==")
-        for folder, repo in SPACES.items():
-            repo_id = f"{NAMESPACE}/{repo}"
-            if not ensure_repo(api, repo_id, "space", args.dry_run):
-                continue
-            push_project(api, repo_id, "space", ROOT / folder, args.dry_run)
+    for upload in result.uploads:
+        execute(api, upload)
 
-    if args.only in (None, "models"):
-        print("\n== Models ==")
-        for folder, (repo, weights) in MODELS.items():
-            repo_id = f"{NAMESPACE}/{repo}"
-            if not ensure_repo(api, repo_id, "model", args.dry_run):
-                continue
-            push_project(api, repo_id, "model", ROOT / folder, args.dry_run)
-            push_artifacts(api, repo_id, "model", ROOT / folder / weights, args.dry_run)
-
-    if args.only in (None, "datasets"):
-        print("\n== Datasets ==")
-        for folder, (repo, data_dir) in DATASETS.items():
-            repo_id = f"{NAMESPACE}/{repo}"
-            if not ensure_repo(api, repo_id, "dataset", args.dry_run):
-                continue
-            push_project(api, repo_id, "dataset", ROOT / folder, args.dry_run)
-            push_artifacts(
-                api,
-                repo_id,
-                "dataset",
-                ROOT / folder / data_dir,
-                args.dry_run,
-                path_in_repo="data",
-            )
-
-    print("\nDone." + (" (dry run -- nothing uploaded)" if args.dry_run else ""))
+    print("\nDone.")
 
 
 if __name__ == "__main__":

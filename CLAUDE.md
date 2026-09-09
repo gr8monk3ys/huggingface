@@ -82,10 +82,16 @@ folder to its Hub repo id -- these differ, since folders carry `-space` /
 trained weights, and parquet data to the right repo type.
 
 ```bash
-hf auth login              # required; --dry-run works without it
-python scripts/publish_to_hub.py --dry-run
+hf auth login              # required to publish; --dry-run needs neither
+python scripts/publish_to_hub.py --dry-run          # no network, no huggingface_hub
 python scripts/publish_to_hub.py --only spaces|models|datasets
 ```
+
+Deciding what to upload (`plan`) and uploading it (`execute`) are separate, so
+`--dry-run` is just printing the plan and is covered by `tests/test_publish_plan.py`.
+The three folder-to-repo tables are reconciled against the filesystem on every
+run: a project folder that is neither mapped nor listed in `NOT_PUBLISHED` fails
+the run rather than being silently skipped.
 
 Uploads from a project root use an extension allowlist (`.py`, `.txt`, `.md`),
 so a stray venv or checkpoint cannot leak to the Hub by being forgotten.

@@ -81,7 +81,7 @@ def fetch_live_models(
                 }
             )
         return out or None
-    except Exception:
+    except Exception:  # noqa: BLE001 - FIXME(PR-04): swallows Hub cold-start 503s that with_retry handles
         return None
 
 

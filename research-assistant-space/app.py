@@ -21,7 +21,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-LLM_MODEL = "mistralai/Mistral-7B-Instruct-v0.3"
+LLM_MODEL = "mistralai/Mistral-7B-Instruct-v0.2"
 
 
 # ---------------------------------------------------------------------------

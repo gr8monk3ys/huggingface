@@ -1,412 +1,124 @@
-"""
-Paper Summarizer - A Gradio-based web application for summarizing academic research papers.
-Version: 2.0.0 (Gradio 5.x compatible)
+"""Paper Summarizer -- a Gradio front end over :mod:`core`.
 
-This application uses Facebook's BART-Large-CNN model to generate structured summaries
-of academic papers. It supports both PDF uploads and pasted text input, handles long
-documents through intelligent chunking, and produces summaries with extracted titles,
-key findings, methodology notes, and concise abstracts.
+This module owns the UI and the adapters it needs: it builds the Inference
+client, wraps it as the ``summarize_fn`` that :func:`core.summarize_paper`
+expects, and renders the returned :class:`core.PaperSummary` as Markdown.
+
+All summarization logic lives in ``core.py`` and is tested there. Nothing in
+this file is imported by the test suite -- see
+docs/adr/0002-coarse-entry-point-for-space-core-modules.md.
 
 Author: Lorenzo Scaturchio (gr8monk3ys)
 License: MIT
 """
 
-import re
 import logging
-from typing import Optional
 
-import fitz  # PyMuPDF
 import gradio as gr
 
-from hf_client import make_client, with_retry
+from core import InputError, PaperSummary, PdfReadError, summarize_paper
+from hf_client import InferenceError, make_client, with_retry
 
-# ---------------------------------------------------------------------------
-# Logging
-# ---------------------------------------------------------------------------
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
 )
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
 MODEL_NAME = "facebook/bart-large-cnn"
-# BART-Large-CNN accepts up to 1024 tokens (~750 words). We chunk by words to
-# stay safely within that window while leaving room for special tokens.
-CHUNK_WORD_LIMIT = 700
-SUMMARY_MIN_LENGTH = 40
-SUMMARY_MAX_LENGTH = 180
-COMBINE_SUMMARY_MAX_LENGTH = 300
 
-# ---------------------------------------------------------------------------
-# Use HuggingFace Inference API (no local model loading - saves memory)
-# ---------------------------------------------------------------------------
 logger.info("Initializing HuggingFace Inference Client for: %s", MODEL_NAME)
 client = make_client(MODEL_NAME)
 logger.info("Inference client ready.")
 
 
 # ===========================================================================
-# Text extraction helpers
+# Adapter: the summarizer core.summarize_paper is given
 # ===========================================================================
 
 
-def extract_text_from_pdf(pdf_path: str) -> str:
-    """Extract all text content from a PDF file using PyMuPDF.
+def _summarize(text: str, *, max_length: int, min_length: int) -> str:
+    """Call the Inference API, retrying transient failures.
 
-    Args:
-        pdf_path: Path to the uploaded PDF file.
-
-    Returns:
-        The concatenated text of every page, separated by newlines.
-
-    Raises:
-        ValueError: If the PDF contains no extractable text.
+    Raises InferenceError, which process_paper turns into a message. It is
+    deliberately not caught here: a caller whose credits are exhausted needs to
+    be told so, not handed a truncated document that reads like a summary.
     """
-    try:
-        doc = fitz.open(pdf_path)
-    except Exception as exc:
-        raise ValueError(
-            f"Could not open the PDF file. It may be corrupted or password-protected. "
-            f"Details: {exc}"
-        ) from exc
+    # max_length/min_length are accepted and then discarded here, deliberately.
+    #
+    # The old code passed them as `parameters=`, which InferenceClient has never
+    # accepted -- every call raised TypeError, and the bare `except Exception`
+    # turned that into the input's first 100 words presented as a summary.
+    #
+    # The kwarg was renamed `generate_parameters` in huggingface_hub 0.30, but
+    # sending it is *also* rejected, by the server rather than the client:
+    #   "The following `model_kwargs` are not used by the model:
+    #    ['generate_parameters']"
+    # The serverless provider for bart-large-cnn takes no length controls at
+    # all. Verified against the live API: the call succeeds with none and fails
+    # with any.
+    #
+    # core still computes the bounds -- they are the right interface and are
+    # tested -- and this adapter is where the provider's limitation belongs.
+    # Restore the kwarg here if the backend gains support.
+    del max_length, min_length
 
-    pages: list[str] = []
-    for page_num, page in enumerate(doc):
-        text = page.get_text("text")
-        if text.strip():
-            pages.append(text)
-        logger.debug("Page %d: extracted %d characters", page_num + 1, len(text))
-
-    doc.close()
-
-    if not pages:
-        raise ValueError(
-            "The PDF appears to contain no extractable text. "
-            "It may be a scanned document or consist only of images."
-        )
-
-    return "\n".join(pages)
-
-
-def clean_text(text: str) -> str:
-    """Normalize whitespace and remove common PDF artefacts.
-
-    Handles excessive newlines, hyphenated line-breaks, and stray control
-    characters that often appear in academic PDFs.
-    """
-    # Remove form-feed and other control characters (keep newlines & tabs)
-    text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", text)
-    # Re-join hyphenated line breaks (e.g. "summa-\nrization" -> "summarization")
-    text = re.sub(r"(\w)-\n(\w)", r"\1\2", text)
-    # Collapse multiple blank lines into one
-    text = re.sub(r"\n{3,}", "\n\n", text)
-    # Collapse multiple spaces
-    text = re.sub(r"[ \t]{2,}", " ", text)
-    return text.strip()
+    result = with_retry(client.summarization, text)
+    return result.summary_text
 
 
 # ===========================================================================
-# Title extraction heuristic
+# Rendering
 # ===========================================================================
 
 
-def extract_title(text: str) -> str:
-    """Attempt to extract the paper title from the first few lines.
-
-    Academic papers typically place the title in the first 1-5 lines before the
-    author block.  We use a simple heuristic: the longest line among the first
-    few non-empty lines that is not all-caps (which would be a header like
-    "ABSTRACT") and does not look like an author list.
-    """
-    lines = [ln.strip() for ln in text.split("\n") if ln.strip()][:12]
-
-    candidates: list[str] = []
-    for line in lines:
-        # Skip very short lines (page numbers, dates, etc.)
-        if len(line) < 10:
-            continue
-        # Skip lines that are likely author names / affiliations (contain '@')
-        if "@" in line:
-            continue
-        # Skip lines that are section headers (all uppercase, short)
-        if line.isupper() and len(line) < 60:
-            continue
-        # Skip lines that look like emails or URLs
-        if re.search(r"https?://|www\.", line):
-            continue
-        candidates.append(line)
-
-    if not candidates:
-        return "Untitled Paper"
-
-    # Return the first substantial candidate (titles usually come first)
-    return candidates[0]
-
-
-# ===========================================================================
-# Chunking and summarization
-# ===========================================================================
-
-
-def chunk_text(text: str, max_words: int = CHUNK_WORD_LIMIT) -> list[str]:
-    """Split text into chunks of approximately *max_words* words.
-
-    Splitting is done on paragraph boundaries where possible so that chunks
-    remain coherent.  If a single paragraph exceeds the limit it is split on
-    sentence boundaries instead.
-    """
-    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
-    chunks: list[str] = []
-    current_chunk: list[str] = []
-    current_word_count = 0
-
-    for para in paragraphs:
-        para_words = len(para.split())
-
-        # If adding this paragraph would exceed the limit, finalize the chunk.
-        if current_word_count + para_words > max_words and current_chunk:
-            chunks.append("\n\n".join(current_chunk))
-            current_chunk = []
-            current_word_count = 0
-
-        # Handle paragraphs that are themselves larger than the limit.
-        if para_words > max_words:
-            sentences = re.split(r"(?<=[.!?])\s+", para)
-            for sentence in sentences:
-                s_words = len(sentence.split())
-                if current_word_count + s_words > max_words and current_chunk:
-                    chunks.append("\n\n".join(current_chunk))
-                    current_chunk = []
-                    current_word_count = 0
-                current_chunk.append(sentence)
-                current_word_count += s_words
-        else:
-            current_chunk.append(para)
-            current_word_count += para_words
-
-    if current_chunk:
-        chunks.append("\n\n".join(current_chunk))
-
-    return chunks
-
-
-def summarize_text(text: str) -> str:
-    """Summarize a single chunk of text using the BART model via Inference API.
-
-    Dynamically adjusts min/max summary length based on input length to avoid
-    the common transformers warning about min_length exceeding input length.
-    """
-    word_count = len(text.split())
-    # For very short inputs, just return the text as-is.
-    if word_count < 50:
-        return text
-
-    max_len = min(SUMMARY_MAX_LENGTH, max(50, word_count // 2))
-    min_len = min(SUMMARY_MIN_LENGTH, max_len - 10)
-
-    try:
-        result = with_retry(
-            client.summarization,
-            text,
-            parameters={
-                "max_length": max_len,
-                "min_length": min_len,
-                "do_sample": False,
-            },
-        )
-        return result.summary_text
-    except Exception as e:
-        logger.warning("Summarization failed: %s", e)
-        # Fallback: return truncated text
-        return " ".join(text.split()[:100]) + "..."
-
-
-def generate_full_summary(text: str) -> str:
-    """Produce a final summary for arbitrarily long documents.
-
-    Strategy:
-    1. Split the document into manageable chunks.
-    2. Summarize each chunk individually.
-    3. If multiple chunk summaries exist, combine them and run a second-pass
-       summarization to produce a coherent final summary.
-    """
-    chunks = chunk_text(text)
-    logger.info("Document split into %d chunk(s) for summarization.", len(chunks))
-
-    chunk_summaries = [summarize_text(chunk) for chunk in chunks]
-
-    if len(chunk_summaries) == 1:
-        return chunk_summaries[0]
-
-    # Second pass: combine chunk summaries and re-summarize for coherence.
-    combined = " ".join(chunk_summaries)
-    combined_words = len(combined.split())
-
-    if combined_words < 50:
-        return combined
-
-    max_len = min(COMBINE_SUMMARY_MAX_LENGTH, max(60, combined_words // 2))
-    min_len = min(SUMMARY_MIN_LENGTH, max_len - 10)
-
-    try:
-        result = with_retry(
-            client.summarization,
-            combined,
-            parameters={
-                "max_length": max_len,
-                "min_length": min_len,
-                "do_sample": False,
-            },
-        )
-        return result.summary_text
-    except Exception as e:
-        logger.warning("Combined summarization failed: %s", e)
-        return combined
-
-
-# ===========================================================================
-# Section extraction helpers
-# ===========================================================================
-
-
-def extract_section(text: str, heading_pattern: str, fallback: str = "") -> str:
-    """Extract content under a section heading matched by *heading_pattern*.
-
-    Uses a regex to find the heading and captures everything until the next
-    heading of equal or higher level.
-    """
-    pattern = re.compile(
-        rf"(?:^|\n)\s*(?:\d+[\.\)]?\s*)?{heading_pattern}\s*\n(.*?)(?=\n\s*(?:\d+[\.\)]?\s*)?[A-Z][A-Za-z ]+\s*\n|\Z)",
-        re.DOTALL | re.IGNORECASE,
-    )
-    match = pattern.search(text)
-    if match:
-        content = match.group(1).strip()
-        if len(content) > 30:
-            return content
-    return fallback
-
-
-def extract_key_findings(text: str) -> str:
-    """Try to extract key findings from Results / Conclusion sections, or
-    fall back to summarizing the last portion of the paper."""
-    for heading in [
-        r"(?:key\s+)?findings",
-        r"results?\s*(?:and\s+discussion)?",
-        r"conclusions?\s*(?:and\s+future\s+work)?",
-        r"discussion",
-    ]:
-        content = extract_section(text, heading)
-        if content:
-            return summarize_text(content[:3000])
-    # Fallback: summarize the last quarter of the document.
-    words = text.split()
-    tail = " ".join(words[-(len(words) // 4) :])
-    if len(tail.split()) > 50:
-        return summarize_text(tail[:3000])
-    return "Key findings could not be automatically extracted."
-
-
-def extract_methodology(text: str) -> str:
-    """Try to extract methodology information from the paper."""
-    for heading in [
-        r"method(?:ology|s)?",
-        r"approach",
-        r"experimental\s+setup",
-        r"materials?\s+and\s+methods",
-        r"(?:proposed\s+)?(?:framework|system|model|architecture)",
-    ]:
-        content = extract_section(text, heading)
-        if content:
-            return summarize_text(content[:3000])
-    return "Methodology section could not be automatically extracted."
-
-
-# ===========================================================================
-# Main processing function
-# ===========================================================================
-
-
-def process_paper(
-    pdf_file: Optional[str],
-    pasted_text: Optional[str],
-) -> str:
-    """Process a research paper and return a structured summary.
-
-    Accepts either a PDF file path (from Gradio upload) or raw pasted text.
-    Returns a Markdown-formatted structured summary.
-    """
-    # ------------------------------------------------------------------
-    # 1. Obtain raw text
-    # ------------------------------------------------------------------
-    if pdf_file is not None:
-        logger.info("Processing uploaded PDF: %s", pdf_file)
-        try:
-            raw_text = extract_text_from_pdf(pdf_file)
-        except ValueError as exc:
-            return f"**Error:** {exc}"
-    elif pasted_text and pasted_text.strip():
-        raw_text = pasted_text.strip()
-    else:
-        return (
-            "**Error:** Please upload a PDF file or paste the paper text. "
-            "Both inputs are currently empty."
-        )
-
-    text = clean_text(raw_text)
-    original_word_count = len(text.split())
-
-    if original_word_count < 30:
-        return (
-            "**Error:** The extracted text is too short to summarize. "
-            "Please provide a longer document or check that the PDF contains selectable text."
-        )
-
-    logger.info("Cleaned text: %d words.", original_word_count)
-
-    # ------------------------------------------------------------------
-    # 2. Extract structured components
-    # ------------------------------------------------------------------
-    title = extract_title(text)
-    concise_summary = generate_full_summary(text)
-    key_findings = extract_key_findings(text)
-    methodology = extract_methodology(text)
-
-    summary_word_count = len(concise_summary.split())
-
-    # ------------------------------------------------------------------
-    # 3. Format the output
-    # ------------------------------------------------------------------
-    output = f"""## {title}
+def _render(summary: PaperSummary) -> str:
+    """Format a PaperSummary as the Markdown shown in the output pane."""
+    return f"""## {summary.title}
 
 ---
 
 ### Concise Summary
-{concise_summary}
+{summary.concise_summary}
 
 ---
 
 ### Key Findings
-{key_findings}
+{summary.key_findings}
 
 ---
 
 ### Methodology
-{methodology}
+{summary.methodology}
 
 ---
 
 ### Statistics
 | Metric | Value |
 |---|---|
-| Original length | {original_word_count:,} words |
-| Summary length | {summary_word_count:,} words |
-| Compression ratio | {original_word_count / max(summary_word_count, 1):.1f}x |
+| Original length | {summary.original_word_count:,} words |
+| Summary length | {summary.summary_word_count:,} words |
+| Compression ratio | {summary.compression_ratio:.1f}x |
 """
-    return output
+
+
+# ===========================================================================
+# Handler
+# ===========================================================================
+
+
+def process_paper(pdf_file, pasted_text) -> str:
+    """Gradio handler: summarize a paper and render it, or report why not."""
+    try:
+        summary = summarize_paper(
+            summarize_fn=_summarize,
+            pdf_path=pdf_file,
+            pasted_text=pasted_text,
+        )
+    except (InputError, PdfReadError, InferenceError) as exc:
+        return f"**Error:** {exc}"
+
+    return _render(summary)
 
 
 # ===========================================================================

@@ -47,7 +47,7 @@ def plan_queries(question: str, chat_fn, max_queries: int = 3) -> list[str]:
             ]
         )
         queries = parse_queries(text, max_queries)
-    except Exception:
+    except Exception:  # noqa: BLE001 - a failed plan degrades to searching the question verbatim
         queries = []
     return queries or [question.strip()]
 

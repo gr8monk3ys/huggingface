@@ -1,189 +1,75 @@
-"""
-Optical Illusion Generator - Create mesmerizing visual illusions with AI.
-Generate spiral illusions, hidden images, and mind-bending patterns.
-"""
+"""Optical Illusion Generator -- a Gradio front end over :mod:`core`.
 
-import random
+Owns the UI and the adapters: builds the Inference client, wraps it as the
+``generate_image`` core expects, and renders the returned Illusion.
+"""
 
 import gradio as gr
 
+from core import (
+    ILLUSION_TYPES,
+    INTENSITY_LEVELS,
+    SUBJECTS,
+    Illusion,
+    InputError,
+    UnknownIllusionError,
+    generate_illusion,
+    random_illusion,
+)
 from hf_client import InferenceError, make_client, with_retry
-
-# ---------------------------------------------------------------------------
-# Illusion Types and Patterns
-# ---------------------------------------------------------------------------
-
-ILLUSION_TYPES = {
-    "Spiral Illusion": {
-        "pattern": "mesmerizing spiral pattern, hypnotic swirl, concentric circles morphing into spiral",
-        "technique": "The image appears to rotate when you stare at the center",
-        "prompt_prefix": "optical illusion spiral pattern containing",
-    },
-    "Hidden Image": {
-        "pattern": "stereogram style, hidden 3D image within pattern, magic eye illusion",
-        "technique": "Relax your eyes and look 'through' the image to reveal the hidden object",
-        "prompt_prefix": "magic eye stereogram pattern hiding",
-    },
-    "Motion Illusion": {
-        "pattern": "peripheral drift illusion, asymmetric patterns that appear to move, pulsating design",
-        "technique": "The pattern appears to move in your peripheral vision",
-        "prompt_prefix": "motion illusion pattern featuring",
-    },
-    "Impossible Object": {
-        "pattern": "M.C. Escher style, impossible geometry, paradoxical architecture, infinite stairs",
-        "technique": "Objects that could not exist in 3D reality",
-        "prompt_prefix": "impossible object in the style of M.C. Escher showing",
-    },
-    "Color Afterimage": {
-        "pattern": "high contrast complementary colors, stare and look away effect, negative afterimage",
-        "technique": "Stare at the center for 30 seconds, then look at a white surface",
-        "prompt_prefix": "high contrast optical illusion for afterimage effect featuring",
-    },
-    "Size Illusion": {
-        "pattern": "forced perspective, Ebbinghaus illusion, relative size comparison",
-        "technique": "Objects appear different sizes due to their surroundings",
-        "prompt_prefix": "size perception illusion demonstrating",
-    },
-    "Ambiguous Figure": {
-        "pattern": "Rubin vase style, duck-rabbit illusion, two images in one, reversible figure",
-        "technique": "You can see two different images depending on your focus",
-        "prompt_prefix": "ambiguous figure optical illusion combining",
-    },
-    "Geometric Pattern": {
-        "pattern": "repeating geometric shapes, tessellation, sacred geometry, fractal-like pattern",
-        "technique": "Patterns create depth and movement through repetition",
-        "prompt_prefix": "geometric optical illusion pattern with",
-    },
-}
-
-SUBJECTS = [
-    "a majestic dragon",
-    "a peaceful Buddha",
-    "a cosmic galaxy",
-    "a blooming flower",
-    "a mysterious eye",
-    "a sacred mandala",
-    "a dancing figure",
-    "a mythical phoenix",
-    "ocean waves",
-    "a mystical tree",
-    "geometric shapes",
-    "a hidden face",
-]
-
-INTENSITY_LEVELS = ["Subtle", "Medium", "Intense"]
-
-# ---------------------------------------------------------------------------
-# Initialize Client
-# ---------------------------------------------------------------------------
 
 IMAGE_MODEL = "black-forest-labs/FLUX.1-schnell"
 client = make_client()
 
-# ---------------------------------------------------------------------------
-# Core Functions
-# ---------------------------------------------------------------------------
+
+def _generate_image(prompt: str):
+    """Call the Inference API, retrying transient failures."""
+    return with_retry(client.text_to_image, prompt, model=IMAGE_MODEL)
 
 
-def generate_illusion(
-    illusion_type: str,
-    subject: str,
-    custom_subject: str,
-    intensity: str,
-    color_scheme: str,
-) -> tuple:
-    """Generate an optical illusion image."""
+def _render(illusion: Illusion) -> str:
+    """Format an Illusion as the Markdown shown beside the image."""
+    return f"""## {illusion.illusion_type} Generated!
 
-    # Use custom subject if provided
-    final_subject = custom_subject.strip() if custom_subject.strip() else subject
-
-    if not final_subject:
-        return None, "Please select or enter a subject."
-
-    illusion_config = ILLUSION_TYPES[illusion_type]
-
-    # Build the prompt
-    intensity_desc = {
-        "Subtle": "subtle, gentle",
-        "Medium": "clear, pronounced",
-        "Intense": "extreme, overwhelming, very strong",
-    }
-
-    color_desc = {
-        "Psychedelic": "vibrant rainbow colors, neon, psychedelic",
-        "Monochrome": "black and white, grayscale, high contrast",
-        "Warm": "warm colors, reds, oranges, yellows, sunset tones",
-        "Cool": "cool colors, blues, greens, purples, ocean tones",
-        "Gold & Black": "gold and black, luxurious, elegant",
-        "Neon": "neon pink and cyan, vaporwave, glowing",
-    }
-
-    prompt = f"""{illusion_config["prompt_prefix"]} {final_subject}.
-
-Style: {illusion_config["pattern"]}
-Effect intensity: {intensity_desc[intensity]}
-Color scheme: {color_desc[color_scheme]}
-
-This is a {intensity.lower()} optical illusion that creates the visual effect of {illusion_config["technique"].lower()}.
-Highly detailed, mesmerizing, hypnotic, professional quality optical illusion art.
-The illusion effect should be clearly visible and striking."""
-
-    try:
-        image = with_retry(client.text_to_image, prompt, model=IMAGE_MODEL)
-    except InferenceError as e:
-        return None, str(e)
-
-    description = f"""## {illusion_type} Generated!
-
-**Subject:** {final_subject}
-**Intensity:** {intensity}
-**Color Scheme:** {color_scheme}
+**Subject:** {illusion.subject}
+**Intensity:** {illusion.intensity}
+**Color Scheme:** {illusion.color_scheme}
 
 ### How to Experience This Illusion
 
-{illusion_config["technique"]}
+{illusion.technique}
 
 ### Tips for Best Effect
 
 - View on a large screen if possible
 - Adjust your distance from the screen
 - Try looking at different parts of the image
-- {get_specific_tip(illusion_type)}
+- {illusion.tip}
 
 ---
 
 *Generated with FLUX.1-schnell*
 """
-    return image, description
 
 
-def get_specific_tip(illusion_type: str) -> str:
-    """Get illusion-specific viewing tips."""
-    tips = {
-        "Spiral Illusion": "Focus on the exact center and let your peripheral vision do the work",
-        "Hidden Image": "Try crossing your eyes slightly or looking 'through' the screen",
-        "Motion Illusion": "Don't focus on one spot - let your eyes wander naturally",
-        "Impossible Object": "Trace the edges with your eyes to see the paradox",
-        "Color Afterimage": "After staring, look at a white wall for the afterimage effect",
-        "Size Illusion": "Compare similar objects in different parts of the image",
-        "Ambiguous Figure": "Blink or shift your focus to switch between interpretations",
-        "Geometric Pattern": "Look at the center, then slowly move your gaze outward",
-    }
-    return tips.get(illusion_type, "Experiment with different viewing distances")
+def handle_generate(
+    illusion_type, subject, custom_subject, intensity, color_scheme
+) -> tuple:
+    """Gradio handler: generate the illusion, or report why not."""
+    try:
+        illusion = generate_illusion(
+            illusion_type,
+            subject,
+            custom_subject,
+            intensity,
+            color_scheme,
+            generate_image=_generate_image,
+        )
+    except (InputError, UnknownIllusionError, InferenceError) as exc:
+        return None, str(exc)
 
+    return illusion.image, _render(illusion)
 
-def random_illusion():
-    """Generate random illusion settings."""
-    illusion_type = random.choice(list(ILLUSION_TYPES.keys()))
-    subject = random.choice(SUBJECTS)
-    intensity = random.choice(INTENSITY_LEVELS)
-    color = random.choice(["Psychedelic", "Monochrome", "Neon", "Gold & Black"])
-    return illusion_type, subject, "", intensity, color
-
-
-# ---------------------------------------------------------------------------
-# Gradio Interface
-# ---------------------------------------------------------------------------
 
 EXAMPLES = [
     ["Spiral Illusion", "a mystical tree", "", "Intense", "Psychedelic"],
@@ -263,13 +149,13 @@ with gr.Blocks(title="Optical Illusion Generator", theme=gr.themes.Soft()) as de
             color_dropdown,
         ],
         outputs=[output_image, output_description],
-        fn=generate_illusion,
+        fn=handle_generate,
         cache_examples=False,
     )
 
     # Event handlers
     generate_btn.click(
-        fn=generate_illusion,
+        fn=handle_generate,
         inputs=[
             illusion_dropdown,
             subject_dropdown,

@@ -10,6 +10,17 @@ app_file: app.py
 pinned: false
 license: mit
 short_description: Find similar research papers using semantic search
+tags:
+  - semantic-search
+  - embeddings
+  - recommender-system
+  - arxiv
+  - research
+  - sentence-transformers
+models:
+  - sentence-transformers/all-MiniLM-L6-v2
+datasets:
+  - gr8monk3ys/academic-papers-dataset
 ---
 
 # Paper Recommender

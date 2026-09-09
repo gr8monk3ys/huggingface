@@ -437,7 +437,7 @@ Examples:
             device=args.device,
             max_length=args.max_length,
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - CLI entry point; reports actionably and exits non-zero
         print(f"Error loading model from '{args.model}': {e}", file=sys.stderr)
         print("Have you trained the model yet? Run: python train.py", file=sys.stderr)
         sys.exit(1)

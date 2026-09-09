@@ -10,6 +10,19 @@ app_file: app.py
 pinned: false
 license: mit
 short_description: Compare AI models head-to-head and vote for the best
+tags:
+  - llm
+  - evaluation
+  - model-comparison
+  - leaderboard
+  - benchmark
+models:
+  - mistralai/Mistral-7B-Instruct-v0.2
+  - HuggingFaceH4/zephyr-7b-beta
+  - google/gemma-2-9b-it
+  - microsoft/Phi-3-mini-4k-instruct
+  - Qwen/Qwen2.5-7B-Instruct
+  - meta-llama/Llama-3.1-8B-Instruct
 ---
 
 # AI Model Arena

@@ -46,7 +46,9 @@ huggingface/
 
 - Models are fine-tuned from pretrained checkpoints (DistilBERT, BART-Large-CNN)
 - Spaces handle PDF input via PyMuPDF (fitz)
-- Text processing uses intelligent chunking that respects paragraph/sentence boundaries
+- `paper-summarizer-space` chunks long documents on paragraph boundaries, falling
+  back to sentence boundaries for an oversized paragraph. This is specific to that
+  Space, not a repo-wide pattern -- nothing else chunks text
 - Scoring systems use composite metrics (e.g., 60% semantic + 40% keyword overlap)
 
 ## Development
@@ -80,10 +82,16 @@ folder to its Hub repo id -- these differ, since folders carry `-space` /
 trained weights, and parquet data to the right repo type.
 
 ```bash
-hf auth login              # required; --dry-run works without it
-python scripts/publish_to_hub.py --dry-run
+hf auth login              # required to publish; --dry-run needs neither
+python scripts/publish_to_hub.py --dry-run          # no network, no huggingface_hub
 python scripts/publish_to_hub.py --only spaces|models|datasets
 ```
+
+Deciding what to upload (`plan`) and uploading it (`execute`) are separate, so
+`--dry-run` is just printing the plan and is covered by `tests/test_publish_plan.py`.
+The three folder-to-repo tables are reconciled against the filesystem on every
+run: a project folder that is neither mapped nor listed in `NOT_PUBLISHED` fails
+the run rather than being silently skipped.
 
 Uploads from a project root use an extension allowlist (`.py`, `.txt`, `.md`),
 so a stray venv or checkpoint cannot leak to the Hub by being forgotten.
@@ -95,3 +103,17 @@ as skipped and carries on rather than aborting the run.
 ## HuggingFace Hub
 
 Projects are published to the `gr8monk3ys` namespace on HuggingFace Hub. Spaces deploy automatically when pushed to their respective HF repos.
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues on `gr8monk3ys/huggingface`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical roles, each label string equal to its name. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one root `CONTEXT.md` plus `docs/adr/`. See `docs/agents/domain.md`.

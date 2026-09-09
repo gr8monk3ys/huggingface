@@ -7,6 +7,10 @@ on:
 
 permissions: read-all
 
+concurrency:
+  group: org-precommit-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   precommit:
     uses: gr8monk3ys/org-workflows/.github/workflows/reusable-precommit.yml@2659a9a32c4e6e3858f69a2f502210941a886d5a

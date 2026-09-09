@@ -1,22 +1,13 @@
 """Tests for the shared HuggingFace inference helper (hf_client.py).
 
-These exercise the pure logic (no network) and guard against the six per-Space
-copies drifting apart.
+These exercise the pure logic; no network. The drift guard over the per-Space
+copies lives in test_vendored.py, which covers every vendored module rather
+than this one alone.
 """
-
-import hashlib
-from pathlib import Path
 
 import pytest
 
 import hf_client
-
-ROOT = Path(__file__).resolve().parent.parent
-
-# Discovered rather than hardcoded: a hardcoded list silently excludes any new
-# Space from the drift check, which is exactly how research-assistant-space
-# shipped an unguarded copy.
-SPACES_WITH_HELPER = sorted(p.parent.name for p in ROOT.glob("*/hf_client.py"))
 
 
 def test_friendly_error_rate_limit():
@@ -110,13 +101,3 @@ def test_get_token_reads_env(monkeypatch):
     assert hf_client.get_token() is None
     monkeypatch.setenv("HF_TOKEN", "secret-abc")
     assert hf_client.get_token() == "secret-abc"
-
-
-def test_all_helper_copies_are_identical():
-    """Every Space must ship the exact same helper (guards against drift)."""
-    digests = {}
-    for space in SPACES_WITH_HELPER:
-        path = ROOT / space / "hf_client.py"
-        assert path.exists(), f"hf_client.py missing in {space}"
-        digests[space] = hashlib.sha256(path.read_bytes()).hexdigest()
-    assert len(set(digests.values())) == 1, f"hf_client.py copies diverged: {digests}"

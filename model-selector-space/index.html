@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Model Selector</title>
+    <style>
+      :root {
+        --bg: #fbfaf9;
+        --fg: #1c1917;
+        --muted: #78716c;
+        --line: #e7e5e4;
+        --card: #ffffff;
+        --accent: #0f766e;
+        --accent-soft: #ccfbf1;
+        --error: #b91c1c;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1c1917;
+          --fg: #f5f5f4;
+          --muted: #a8a29e;
+          --line: #44403c;
+          --card: #292524;
+          --accent: #5eead4;
+          --accent-soft: #134e4a;
+          --error: #fca5a5;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      main { max-width: 780px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+      header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 1.75rem; }
+      h1 { font-size: 1.6rem; margin: 0 0 .25rem; letter-spacing: -.02em; }
+      .muted { color: var(--muted); }
+      .lede { color: var(--muted); margin: 0; }
+      form { display: grid; gap: .9rem; grid-template-columns: 1fr 1fr; }
+      label { display: block; font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: .3rem; }
+      select, button {
+        width: 100%; padding: .6rem .7rem; font: inherit;
+        border: 1px solid var(--line); border-radius: 8px;
+        background: var(--card); color: var(--fg);
+      }
+      .full { grid-column: 1 / -1; }
+      button {
+        background: var(--accent); color: var(--bg); border-color: var(--accent);
+        font-weight: 600; cursor: pointer;
+      }
+      button:disabled { opacity: .55; cursor: progress; }
+      #task-info {
+        grid-column: 1 / -1; font-size: .88rem; color: var(--muted);
+        background: var(--card); border: 1px solid var(--line);
+        border-radius: 8px; padding: .7rem .8rem;
+      }
+      h2 { font-size: 1.15rem; margin: 2rem 0 .2rem; }
+      .source { display: inline-block; font-size: .78rem; padding: .15rem .5rem; border-radius: 999px;
+                background: var(--accent-soft); color: var(--accent); }
+      .note { font-size: .85rem; color: var(--muted); border-left: 3px solid var(--line); padding-left: .7rem; }
+      .error { color: var(--error); font-weight: 600; }
+      .model { border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: .85rem 1rem; margin-top: .7rem; }
+      .model h3 { margin: 0 0 .35rem; font-size: 1rem; }
+      .model .meta { display: flex; gap: 1.1rem; flex-wrap: wrap; font-size: .85rem; color: var(--muted); margin-bottom: .4rem; }
+      .model a { color: var(--accent); text-decoration: none; font-size: .85rem; }
+      .model a:hover { text-decoration: underline; }
+      pre { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+            padding: .9rem 1rem; overflow-x: auto; font-size: .82rem; line-height: 1.55; }
+      footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line);
+               font-size: .82rem; color: var(--muted); }
+      footer a { color: var(--accent); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Model Selector</h1>
+        <p class="lede">
+          Find a HuggingFace model for your task. Queries the Hub live and ranks by
+          downloads, with a curated fallback when the Hub is unreachable.
+        </p>
+      </header>
+
+      <form id="form">
+        <div class="full">
+          <label for="task">Task</label>
+          <select id="task"></select>
+        </div>
+        <div id="task-info"></div>
+        <div>
+          <label for="size">Model size</label>
+          <select id="size"></select>
+        </div>
+        <div>
+          <label for="priority">Priority</label>
+          <select id="priority"></select>
+        </div>
+        <div class="full">
+          <button id="go" type="submit">Recommend models</button>
+        </div>
+      </form>
+
+      <section id="results"></section>
+
+      <section id="code-wrap" hidden>
+        <h2>Use it</h2>
+        <pre><code id="code"></code></pre>
+      </section>
+
+      <footer>
+        A <strong>static</strong> Space: no server, so it is always awake and free to
+        run. Everything happens in your browser against the public Hub API.
+        Built by <a href="https://huggingface.co/gr8monk3ys">Lorenzo Scaturchio</a>.
+      </footer>
+    </main>
+
+    <script src="tasks.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

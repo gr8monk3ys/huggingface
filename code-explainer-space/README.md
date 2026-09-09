@@ -10,6 +10,15 @@ app_file: app.py
 pinned: false
 license: mit
 short_description: AI-powered code explanation and documentation
+tags:
+  - code
+  - code-explanation
+  - developer-tools
+  - llm
+  - mistral
+  - education
+models:
+  - mistralai/Mistral-7B-Instruct-v0.2
 ---
 
 # Code Explainer

@@ -1,8 +1,11 @@
 ---
 license: mit
+pretty_name: arXiv CS/ML Academic Papers
 task_categories:
   - text-classification
   - summarization
+  - feature-extraction
+  - sentence-similarity
 language:
   - en
 tags:

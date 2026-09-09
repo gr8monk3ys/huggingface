@@ -1,9 +1,10 @@
 """Test helpers for importing the per-Space modules.
 
 Spaces deploy independently, so their modules live in subfolders rather than an
-installed package. ``hf_client`` is unique, so we put its folder on ``sys.path``.
-The per-Space ``core.py`` files share a name, so load those by path under a
-unique module name via :func:`load_local_module`.
+installed package. Vendored modules (``hf_client``, ``papers``) have unique
+names, so one folder holding each goes on ``sys.path``. The per-Space
+``core.py`` files share a name, so load those by path under a unique module
+name via :func:`load_local_module`.
 """
 
 import importlib.util
@@ -12,15 +13,28 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# hf_client.py is identical across Spaces; one copy on the path is enough.
-_helper_dir = str(ROOT / "code-explainer-space")
-if _helper_dir not in sys.path:
-    sys.path.insert(0, _helper_dir)
+# Vendored modules are byte-identical across the Spaces that carry them (a
+# guard in test_vendored.py enforces that), so one copy of each on the path is
+# enough. Each entry names a folder holding one such module: code-explainer for
+# hf_client.py, paper-recommender for papers.py.
+_VENDOR_DIRS = ("code-explainer-space", "paper-recommender-space")
+for _name in _VENDOR_DIRS:
+    _dir = str(ROOT / _name)
+    if _dir not in sys.path:
+        sys.path.append(_dir)
 
 
 def load_local_module(module_name: str, relative_path: str):
-    """Import a module from a file path under a unique *module_name*."""
+    """Import a module from a file path under a unique *module_name*.
+
+    The module is registered in ``sys.modules`` before it is executed. That is
+    not bookkeeping: a module using ``from __future__ import annotations`` makes
+    its dataclass field types strings, and ``dataclasses`` resolves those via
+    ``sys.modules[cls.__module__]``. Without the entry that lookup returns None
+    and the class fails to build.
+    """
     spec = importlib.util.spec_from_file_location(module_name, ROOT / relative_path)
     module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
     spec.loader.exec_module(module)
     return module

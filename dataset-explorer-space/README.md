@@ -3,10 +3,8 @@ title: Dataset Explorer
 emoji: 📊
 colorFrom: blue
 colorTo: green
-sdk: gradio
-sdk_version: 5.31.0
-python_version: "3.10"
-app_file: app.py
+sdk: static
+app_file: index.html
 pinned: false
 license: mit
 short_description: Explore any HuggingFace dataset visually
@@ -15,8 +13,8 @@ tags:
   - data-exploration
   - eda
   - visualization
-  - pandas
-  - matplotlib
+  - datasets-server
+  - static
 ---
 
 # Dataset Explorer

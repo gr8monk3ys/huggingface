@@ -1,18 +1,16 @@
-"""Tests for model-arena and dataset-explorer core logic.
+"""Tests for model-arena's core logic.
 
-These are the two Spaces that do not fit the LLM shape: one keeps a vote tally,
-the other returns a chart. Both are covered here.
+dataset-explorer used to be tested here too. It became a static Space, so its
+Python is gone and tests/test_dataset_explorer_data.py covers what remains.
 """
 
 import random
 
-import pandas as pd
 import pytest
 
 from conftest import load_local_module
 
 arena = load_local_module("model_arena_core", "model-arena-space/core.py")
-explorer = load_local_module("dataset_explorer_core", "dataset-explorer-space/core.py")
 
 NAMES = list(arena.MODELS)
 
@@ -145,114 +143,3 @@ def test_random_battle_picks_two_distinct_models_and_a_real_prompt():
 
 def test_example_prompt_for_unknown_category_is_empty():
     assert arena.example_prompt("Nonexistent") == ""
-
-
-# ===========================================================================
-# dataset-explorer
-# ===========================================================================
-def frame():
-    return pd.DataFrame(
-        {
-            "score": [1.0, 2.0, 3.0, 4.0],
-            "label": ["a", "b", "a", "c"],
-            "missing": [1.0, None, 3.0, None],
-        }
-    )
-
-
-def fake_loader(rows):
-    def loader(dataset_id, *args, **kwargs):
-        return iter(rows)
-
-    return loader
-
-
-def test_describe_reports_shape():
-    stats = explorer.describe(frame())
-    assert stats.rows == 4
-    assert len(stats.columns) == 3
-
-
-def test_describe_of_an_empty_frame_reports_no_rows():
-    assert explorer.describe(pd.DataFrame()).rows == 0
-
-
-def test_numeric_columns_carry_range_and_moments():
-    score = next(c for c in explorer.describe(frame()).columns if c.name == "score")
-    assert score.is_numeric
-    assert (score.minimum, score.maximum) == (1.0, 4.0)
-    assert score.mean == 2.5
-
-
-def test_categorical_columns_carry_cardinality_and_top_values():
-    label = next(c for c in explorer.describe(frame()).columns if c.name == "label")
-    assert not label.is_numeric
-    assert label.unique == 3
-    assert label.top_values["a"] == 2
-
-
-def test_top_values_are_omitted_for_high_cardinality_columns():
-    many = pd.DataFrame({"id": [f"v{i}" for i in range(50)]})
-    column = explorer.describe(many).columns[0]
-    assert column.unique == 50
-    assert column.top_values is None
-
-
-def test_null_percentage_is_reported():
-    missing = next(c for c in explorer.describe(frame()).columns if c.name == "missing")
-    assert missing.non_null == 2
-    assert missing.non_null_pct == 50.0
-
-
-def test_load_samples_stops_at_the_requested_count():
-    rows = [{"n": i} for i in range(100)]
-    df, configs = explorer.load_samples(
-        "some/dataset",
-        num_samples=7,
-        loader=fake_loader(rows),
-        config_lister=lambda _: ["default"],
-    )
-    assert len(df) == 7
-    assert configs == ["default"]
-
-
-def test_loader_failures_become_a_domain_error():
-    def broken(*args, **kwargs):
-        raise OSError("connection reset")
-
-    with pytest.raises(explorer.DatasetLoadError, match="connection reset"):
-        explorer.load_samples(
-            "some/dataset", loader=broken, config_lister=lambda _: ["default"]
-        )
-
-
-@pytest.mark.parametrize("dataset_id", ["", "   "])
-def test_explore_rejects_an_empty_dataset_id(dataset_id):
-    with pytest.raises(ValueError, match="enter a dataset ID"):
-        explorer.explore(dataset_id, loader=fake_loader([]), config_lister=lambda _: [])
-
-
-def test_explore_rejects_a_dataset_that_yields_no_rows():
-    with pytest.raises(ValueError, match="No data found"):
-        explorer.explore(
-            "some/dataset", loader=fake_loader([]), config_lister=lambda _: ["default"]
-        )
-
-
-def test_explore_returns_stats_configs_and_a_ten_row_sample():
-    rows = [{"n": i, "t": "x"} for i in range(40)]
-    result = explorer.explore(
-        "some/dataset",
-        num_samples=30,
-        loader=fake_loader(rows),
-        config_lister=lambda _: ["default", "other"],
-        chart_fn=lambda df: "<chart>",
-    )
-    assert result.stats.rows == 30
-    assert result.configs == ["default", "other"]
-    assert len(result.sample) == 10
-    assert result.chart == "<chart>"
-
-
-def test_visualize_returns_nothing_for_an_empty_frame():
-    assert explorer.visualize(pd.DataFrame()) is None

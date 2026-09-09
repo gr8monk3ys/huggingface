@@ -109,7 +109,7 @@ def fetch_stock_data(
         data.index = pd.to_datetime(data.index)
         return data, None
 
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - yfinance is a network edge; the message is shown to the user
         return None, f"Error fetching data for '{ticker}': {exc}"
 
 

@@ -362,7 +362,7 @@ def train(
             )
             tokenizer.push_to_hub(hub_model_id)
             logger.info("Successfully pushed to Hub!")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - FIXME(PR-06): converge on fatal, as paper-classifier already is
             logger.error(f"Failed to push to Hub: {e}")
             logger.info("You can push manually later with:")
             logger.info(f"  huggingface-cli upload {hub_model_id} {final_path}")

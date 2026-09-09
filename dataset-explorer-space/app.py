@@ -62,7 +62,7 @@ def get_dataset_info(
 
         return df, configs, None
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - FIXME(PR-04): no retry, and str(e) reaches the browser raw
         return None, [], str(e)
 
 

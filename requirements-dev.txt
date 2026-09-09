@@ -5,5 +5,9 @@
 # gradio, torch, or transformers. Each project's own requirements.txt covers
 # what that project needs to actually run.
 pytest>=8.0.0,<10.0.0
+# Pinned to the exact version .pre-commit-config.yaml uses. Ruff's default
+# rule set widens between releases, so a range would let CI and the hook
+# disagree about what passes.
+ruff==0.9.10
 numpy>=1.24.0,<3.0.0
 pandas>=2.0.0,<3.0.0

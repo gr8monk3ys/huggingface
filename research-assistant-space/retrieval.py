@@ -130,7 +130,7 @@ def load_papers(
             if len(papers) >= max_papers:
                 break
         return papers or None
-    except Exception:
+    except Exception:  # noqa: BLE001 - any loader failure falls back to the offline corpus
         return None
 
 

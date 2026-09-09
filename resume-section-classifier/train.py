@@ -15,6 +15,7 @@ Usage:
 """
 
 import json
+import math
 import logging
 import sys
 from pathlib import Path
@@ -30,6 +31,7 @@ from transformers import (
     EarlyStoppingCallback,
     Trainer,
     TrainingArguments,
+    set_seed,
 )
 
 from data_generator import generate_dataset, get_label_mapping, load_as_hf_dataset
@@ -57,8 +59,27 @@ MAX_LENGTH = 256
 # ---------------------------------------------------------------------------
 # Metrics computation
 # ---------------------------------------------------------------------------
-def build_compute_metrics(id2label: dict):
-    """Build a compute_metrics function with access to label mappings."""
+def warmup_steps_for(
+    n_train: int, batch_size: int, grad_accum: int, epochs: float, ratio: float
+) -> int:
+    """Convert a warm-up *ratio* into a step count.
+
+    transformers 5.x removed ``warmup_ratio`` from TrainingArguments and kept
+    only ``warmup_steps``; the v5 migration in 60a308b bumped the version
+    without updating the call, so this script raised TypeError before reaching
+    a single training step. The ratio stays the user-facing knob because it is
+    the one that survives a change of batch size.
+    """
+    steps_per_epoch = math.ceil(n_train / max(batch_size * grad_accum, 1))
+    return round(ratio * steps_per_epoch * epochs)
+
+
+def build_compute_metrics():
+    """Return a ``compute_metrics`` callable for the HF Trainer.
+
+    Loads the four evaluate metrics once at creation time rather than per
+    evaluation, to avoid repeated disk access.
+    """
     accuracy_metric = evaluate.load("accuracy")
     f1_metric = evaluate.load("f1")
     precision_metric = evaluate.load("precision")
@@ -66,6 +87,9 @@ def build_compute_metrics(id2label: dict):
 
     def compute_metrics(eval_pred):
         logits, labels = eval_pred
+        # Some model/config combinations return predictions as a tuple.
+        if isinstance(logits, tuple):
+            logits = logits[0]
         predictions = np.argmax(logits, axis=-1)
 
         acc = accuracy_metric.compute(predictions=predictions, references=labels)
@@ -181,6 +205,12 @@ def train(
     )
     logger.info(f"FP16: {fp16}")
 
+    # Seed python, numpy and torch before anything samples from them.
+    # TrainingArguments(seed=...) covers the Trainer, but not the synthetic data
+    # generator below, which draws from the global `random` -- so without this
+    # two runs at the same seed trained on different data.
+    set_seed(seed)
+
     # ------------------------------------------------------------------
     # 1. Generate synthetic data
     # ------------------------------------------------------------------
@@ -239,8 +269,14 @@ def train(
         gradient_accumulation_steps=gradient_accumulation_steps,
         learning_rate=learning_rate,
         weight_decay=weight_decay,
-        warmup_ratio=warmup_ratio,
-        lr_scheduler_type="cosine",
+        warmup_steps=warmup_steps_for(
+            len(tokenized_dataset["train"]),
+            batch_size,
+            gradient_accumulation_steps,
+            epochs,
+            warmup_ratio,
+        ),
+        lr_scheduler_type="linear",  # the library default; matches paper-classifier
         # Evaluation
         eval_strategy="epoch",
         save_strategy="epoch",
@@ -248,7 +284,6 @@ def train(
         metric_for_best_model="f1_macro",
         greater_is_better=True,
         # Logging
-        logging_dir=DEFAULT_LOGGING_DIR,
         logging_strategy="steps",
         logging_steps=50,
         report_to="none",
@@ -261,7 +296,7 @@ def train(
         # Hub
         push_to_hub=False,  # We'll push manually after evaluation
         # Misc
-        save_total_limit=3,
+        save_total_limit=2,
         disable_tqdm=False,
     )
 
@@ -278,7 +313,7 @@ def train(
         eval_dataset=tokenized_dataset["validation"],
         processing_class=tokenizer,
         data_collator=data_collator,
-        compute_metrics=build_compute_metrics(id2label),
+        compute_metrics=build_compute_metrics(),
         callbacks=callbacks,
     )
 
@@ -362,10 +397,13 @@ def train(
             )
             tokenizer.push_to_hub(hub_model_id)
             logger.info("Successfully pushed to Hub!")
-        except Exception as e:  # noqa: BLE001 - FIXME(PR-06): converge on fatal, as paper-classifier already is
-            logger.error(f"Failed to push to Hub: {e}")
+        except Exception as exc:  # noqa: BLE001 - reported, then fatal
+            logger.error("Failed to push to Hub: %s", exc)
             logger.info("You can push manually later with:")
-            logger.info(f"  huggingface-cli upload {hub_model_id} {final_path}")
+            logger.info("  huggingface-cli upload %s %s", hub_model_id, final_path)
+            # Fatal, as in paper-classifier: a run whose artifact never reached
+            # the Hub has not succeeded, and exiting 0 hides that from CI.
+            sys.exit(1)
 
     logger.info("\nTraining complete!")
     return test_results

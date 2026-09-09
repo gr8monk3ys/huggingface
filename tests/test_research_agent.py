@@ -110,7 +110,7 @@ def test_load_papers_injected_loader_and_failure():
         {
             "title": "T",
             "abstract": "A",
-            "authors": ["X", "Y", "Z", "W"],
+            "authors": ["X", "Y", "Z", "W", "V"],
             "primary_category": "cs.LG",
             "published": "2019",
             "url": "u",
@@ -118,7 +118,9 @@ def test_load_papers_injected_loader_and_failure():
     ]
     papers = retrieval.load_papers(loader=lambda dataset_id, split: rows)
     assert papers and papers[0]["title"] == "T"
-    assert papers[0]["authors"].endswith("et al.")
+    # Four names are shown before "et al." -- this Space used to show three,
+    # and the two copies of this function disagreed. See PR notes / Q6.
+    assert papers[0]["authors"] == "X, Y, Z, W, et al."
 
     def boom(dataset_id, split):
         raise RuntimeError("hub down")

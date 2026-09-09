@@ -58,7 +58,7 @@ def detect_language(code: str) -> str:
     try:
         lexer = guess_lexer(code)
         return lexer.name
-    except Exception:
+    except Exception:  # noqa: BLE001 - pygments raises freely on odd input; Unknown is the fallback
         return "Unknown"
 
 
@@ -80,7 +80,7 @@ def format_code_html(code: str, language: str) -> str:
 
         formatter = HtmlFormatter(style="monokai", noclasses=True)
         return highlight(code, lexer, formatter)
-    except Exception:
+    except Exception:  # noqa: BLE001 - highlighting is cosmetic; fall back to escaped plain text
         return f"<pre><code>{html.escape(code)}</code></pre>"
 
 

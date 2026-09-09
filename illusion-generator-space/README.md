@@ -10,6 +10,14 @@ app_file: app.py
 pinned: false
 license: mit
 short_description: Create mesmerizing visual illusions with AI
+tags:
+  - text-to-image
+  - image-generation
+  - flux
+  - optical-illusion
+  - art
+models:
+  - black-forest-labs/FLUX.1-schnell
 ---
 
 # Optical Illusion Generator

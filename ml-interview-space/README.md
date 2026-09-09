@@ -8,6 +8,12 @@ app_file: index.html
 pinned: false
 license: mit
 short_description: Practice ML and Data Science interview questions
+tags:
+  - education
+  - interview-preparation
+  - machine-learning
+  - data-science
+  - quiz
 ---
 
 # ML Interview Prep

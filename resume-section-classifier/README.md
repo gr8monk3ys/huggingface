@@ -7,12 +7,12 @@ tags:
   - nlp
   - distilbert
   - synthetic-data
+  - resume
+  - career
 metrics:
   - accuracy
   - f1
 pipeline_tag: text-classification
-datasets:
-  - custom-synthetic
 language:
   - en
 ---

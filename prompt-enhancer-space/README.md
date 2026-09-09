@@ -10,6 +10,14 @@ app_file: app.py
 pinned: false
 license: mit
 short_description: Transform basic prompts into powerful AI prompts
+tags:
+  - prompt-engineering
+  - llm
+  - mistral
+  - writing
+  - text-generation
+models:
+  - mistralai/Mistral-7B-Instruct-v0.2
 ---
 
 # Prompt Enhancer

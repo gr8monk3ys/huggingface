@@ -10,6 +10,18 @@ app_file: app.py
 pinned: false
 license: mit
 short_description: Agentic RAG research assistant over arXiv papers
+tags:
+  - rag
+  - retrieval-augmented-generation
+  - agents
+  - semantic-search
+  - arxiv
+  - research
+models:
+  - mistralai/Mistral-7B-Instruct-v0.2
+  - sentence-transformers/all-MiniLM-L6-v2
+datasets:
+  - gr8monk3ys/academic-papers-dataset
 ---
 
 # Research Assistant (Agentic RAG)

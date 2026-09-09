@@ -10,6 +10,15 @@ app_file: app.py
 pinned: false
 license: mit
 short_description: AI-powered resume analysis against job descriptions
+tags:
+  - resume
+  - job-matching
+  - semantic-similarity
+  - career
+  - nlp
+  - sentence-transformers
+models:
+  - sentence-transformers/all-MiniLM-L6-v2
 ---
 
 # Resume Analyzer

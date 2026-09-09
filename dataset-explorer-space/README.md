@@ -10,6 +10,13 @@ app_file: app.py
 pinned: false
 license: mit
 short_description: Explore any HuggingFace dataset visually
+tags:
+  - datasets
+  - data-exploration
+  - eda
+  - visualization
+  - pandas
+  - matplotlib
 ---
 
 # Dataset Explorer

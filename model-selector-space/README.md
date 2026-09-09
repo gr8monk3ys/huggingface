@@ -10,6 +10,11 @@ app_file: app.py
 pinned: false
 license: mit
 short_description: Find the perfect HuggingFace model for your task
+tags:
+  - model-selection
+  - model-discovery
+  - huggingface-hub
+  - developer-tools
 ---
 
 # Model Selector

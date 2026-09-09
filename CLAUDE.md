@@ -103,3 +103,17 @@ as skipped and carries on rather than aborting the run.
 ## HuggingFace Hub
 
 Projects are published to the `gr8monk3ys` namespace on HuggingFace Hub. Spaces deploy automatically when pushed to their respective HF repos.
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues on `gr8monk3ys/huggingface`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical roles, each label string equal to its name. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one root `CONTEXT.md` plus `docs/adr/`. See `docs/agents/domain.md`.

@@ -5,5 +5,8 @@
 # gradio, torch, or transformers. Each project's own requirements.txt covers
 # what that project needs to actually run.
 pytest>=8.0.0,<10.0.0
+# Pure-Python and tiny. code-explainer's core highlights the snippet it
+# explains, so reaching its entry point at all needs pygments.
+pygments>=2.17.0,<3.0.0
 numpy>=1.24.0,<3.0.0
 pandas>=2.0.0,<3.0.0

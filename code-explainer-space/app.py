@@ -1,162 +1,64 @@
-"""
-Code Explainer - AI-powered code explanation using HuggingFace Inference API.
-"""
+"""Code Explainer -- a Gradio front end over :mod:`core`.
 
-import html
+Owns the UI and the adapters: builds the Inference client, wraps it as the
+``chat_fn`` core expects, and renders the returned Explanation.
+"""
 
 import gradio as gr
-from pygments import highlight
-from pygments.lexers import get_lexer_by_name, guess_lexer
-from pygments.formatters import HtmlFormatter
 
+from core import (
+    AUTO_DETECT,
+    EXPLANATION_LEVELS,
+    LANGUAGES,
+    Explanation,
+    InputError,
+    detect_language,
+    explain_code,
+    highlight_code,
+)
 from hf_client import InferenceError, make_client, with_retry
 
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
-
 MODEL_ID = "mistralai/Mistral-7B-Instruct-v0.3"
-
-LANGUAGES = [
-    "Auto-detect",
-    "Python",
-    "JavaScript",
-    "TypeScript",
-    "Java",
-    "C++",
-    "C",
-    "Go",
-    "Rust",
-    "Ruby",
-    "PHP",
-    "Swift",
-    "Kotlin",
-    "SQL",
-    "Bash",
-    "HTML/CSS",
-]
-
-EXPLANATION_LEVELS = {
-    "Beginner": "Explain this code in simple terms that a programming beginner would understand. Use analogies and avoid jargon. Focus on the 'what' rather than technical details.",
-    "Intermediate": "Explain this code for someone with basic programming knowledge. Include technical details but explain any advanced concepts. Discuss both what the code does and how it works.",
-    "Advanced": "Provide a thorough technical analysis of this code. Discuss implementation details, time/space complexity, potential edge cases, and possible improvements or alternatives.",
-}
-
-# ---------------------------------------------------------------------------
-# Initialize client
-# ---------------------------------------------------------------------------
-
 client = make_client(MODEL_ID)
 
-# ---------------------------------------------------------------------------
-# Utility functions
-# ---------------------------------------------------------------------------
 
-
-def detect_language(code: str) -> str:
-    """Attempt to detect the programming language."""
-    try:
-        lexer = guess_lexer(code)
-        return lexer.name
-    except Exception:
-        return "Unknown"
-
-
-def format_code_html(code: str, language: str) -> str:
-    """Apply syntax highlighting to code."""
-    try:
-        if language == "Auto-detect" or language == "Unknown":
-            lexer = guess_lexer(code)
-        else:
-            lang_map = {
-                "JavaScript": "javascript",
-                "TypeScript": "typescript",
-                "C++": "cpp",
-                "HTML/CSS": "html",
-                "Bash": "bash",
-            }
-            lang_key = lang_map.get(language, language.lower())
-            lexer = get_lexer_by_name(lang_key)
-
-        formatter = HtmlFormatter(style="monokai", noclasses=True)
-        return highlight(code, lexer, formatter)
-    except Exception:
-        return f"<pre><code>{html.escape(code)}</code></pre>"
-
-
-# ---------------------------------------------------------------------------
-# Main explanation function
-# ---------------------------------------------------------------------------
-
-
-def explain_code(code: str, language: str, level: str) -> tuple[str, str]:
-    """Generate an explanation for the provided code."""
-    if not code.strip():
-        return "Please paste some code to explain.", ""
-
-    # Detect language if auto
-    detected_lang = language
-    if language == "Auto-detect":
-        detected_lang = detect_language(code)
-
-    # Build prompt
-    level_instruction = EXPLANATION_LEVELS.get(
-        level, EXPLANATION_LEVELS["Intermediate"]
+def _chat(messages, *, max_tokens, temperature, top_p) -> str:
+    """Call the Inference API, retrying transient failures."""
+    completion = with_retry(
+        client.chat_completion,
+        messages=messages,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        top_p=top_p,
     )
-    lexer_hint = detected_lang.split()[0].lower() if detected_lang.strip() else ""
+    return completion.choices[0].message.content
 
-    system_prompt = f"You are an expert programming tutor. {level_instruction}"
-    user_prompt = f"""Explain the following code.
 
-```{lexer_hint}
-{code}
-```
+def _render(explanation: Explanation) -> str:
+    """Format an Explanation as the Markdown shown in the output pane."""
+    return (
+        f"**Detected Language:** `{explanation.detected_language}`"
+        f"\n\n---\n\n{explanation.body}"
+    )
 
-Provide a structured explanation with the following sections:
 
-## Overview
-A brief summary of what this code does (2-3 sentences).
+def handle_explain(code: str, language: str, level: str) -> tuple[str, str]:
+    """Gradio handler: explain the code, or report why not.
 
-## Step-by-Step Breakdown
-Explain the code section by section, describing what each part does.
-
-## Key Concepts
-List and briefly explain the important programming concepts used in this code.
-
-## Potential Improvements
-Suggest any improvements, best practices, or potential issues to be aware of.
-
-Keep your explanation clear, accurate, and educational."""
-
+    The code pane is filled in either way -- a failed explanation should not
+    also cost the user the highlighted view of what they pasted.
+    """
     try:
-        completion = with_retry(
-            client.chat_completion,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            max_tokens=1500,
-            temperature=0.7,
-            top_p=0.95,
-        )
-        explanation = completion.choices[0].message.content.strip()
+        explanation = explain_code(code, language, level, chat_fn=_chat)
+    except InputError as exc:
+        return str(exc), ""
+    except InferenceError as exc:
+        resolved = detect_language(code) if language == AUTO_DETECT else language
+        return f"**{exc}**", highlight_code(code, resolved)
 
-        # Add language badge
-        explanation = (
-            f"**Detected Language:** `{detected_lang}`\n\n---\n\n{explanation}"
-        )
-
-        # Format the code with syntax highlighting
-        formatted_code = format_code_html(code, detected_lang)
-
-        return explanation, formatted_code
-
-    except InferenceError as e:
-        return f"**{e}**", format_code_html(code, detected_lang)
+    return _render(explanation), explanation.highlighted_code
 
 
-# ---------------------------------------------------------------------------
-# Gradio Interface
 # ---------------------------------------------------------------------------
 
 EXAMPLE_CODE = '''def fibonacci(n):
@@ -216,7 +118,7 @@ with gr.Blocks(title="Code Explainer", theme=gr.themes.Soft()) as demo:
     explanation_output = gr.Markdown(label="Explanation")
 
     explain_btn.click(
-        fn=explain_code,
+        fn=handle_explain,
         inputs=[code_input, language_dropdown, level_dropdown],
         outputs=[explanation_output, formatted_code_output],
     )

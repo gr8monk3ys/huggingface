@@ -35,7 +35,7 @@ TASKS = {
                 "license": "llama3.1",
             },
             {
-                "name": "mistralai/Mistral-7B-Instruct-v0.3",
+                "name": "mistralai/Mistral-7B-Instruct-v0.2",
                 "size": "7B",
                 "license": "apache-2.0",
             },

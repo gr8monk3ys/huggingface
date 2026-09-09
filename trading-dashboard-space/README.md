@@ -10,6 +10,13 @@ app_file: app.py
 pinned: false
 license: mit
 short_description: Technical analysis dashboard with trading signals
+tags:
+  - finance
+  - technical-analysis
+  - backtesting
+  - visualization
+  - plotly
+  - education
 ---
 
 # Trading Signal Dashboard

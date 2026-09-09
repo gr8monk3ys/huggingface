@@ -10,6 +10,14 @@ app_file: app.py
 pinned: false
 license: mit
 short_description: Blend two art styles into unique masterpieces
+tags:
+  - text-to-image
+  - image-generation
+  - flux
+  - art
+  - style-transfer
+models:
+  - black-forest-labs/FLUX.1-schnell
 ---
 
 # Style Mixer

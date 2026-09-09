@@ -10,6 +10,15 @@ app_file: app.py
 pinned: false
 license: mit
 short_description: Summarize academic research papers with AI
+tags:
+  - summarization
+  - arxiv
+  - research
+  - pdf
+  - nlp
+  - bart
+models:
+  - facebook/bart-large-cnn
 ---
 
 # Paper Summarizer

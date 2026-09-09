@@ -6,12 +6,16 @@ tags:
   - arxiv
   - academic-papers
   - distilbert
+  - research
+  - paper-classification
 datasets:
   - ccdv/arxiv-classification
 metrics:
   - accuracy
   - f1
 pipeline_tag: text-classification
+language:
+  - en
 ---
 
 # Academic Paper Classifier

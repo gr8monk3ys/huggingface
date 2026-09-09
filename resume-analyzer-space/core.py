@@ -14,6 +14,7 @@ whatever an embedding model happens to return that day.
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass, field
 from typing import Callable, Optional
 
 # Composite score weighting. Named rather than inlined: the 60/40 split is the
@@ -247,3 +248,147 @@ def generate_suggestions(
         )
 
     return suggestions
+
+
+# ---------------------------------------------------------------------------
+# PDF reading
+# ---------------------------------------------------------------------------
+class PdfReadError(ValueError):
+    """A PDF could not be opened, or held no extractable text."""
+
+
+class InputError(ValueError):
+    """The caller supplied no resume, or no job description."""
+
+
+def read_pdf_text(pdf_path: str) -> str:
+    """Extract every page's text from the PDF at *pdf_path*.
+
+    Raises:
+        PdfReadError: the file could not be read, or contains no text.
+    """
+    import fitz  # PyMuPDF -- imported lazily so this module stays importable
+
+    try:
+        doc = fitz.open(pdf_path)
+        pages = [page.get_text() for page in doc]
+        doc.close()
+    except Exception as exc:  # noqa: BLE001 - re-raised as a domain error
+        raise PdfReadError(f"Could not read the PDF file: {exc}") from exc
+
+    text = "\n".join(pages).strip()
+    if not text:
+        raise PdfReadError(
+            "The PDF appears to contain no extractable text. "
+            "It may be a scanned document or consist only of images."
+        )
+    return text
+
+
+# ---------------------------------------------------------------------------
+# Overall verdict
+# ---------------------------------------------------------------------------
+# Deliberately not the same bands as describe_alignment(), which judges a single
+# section against the job description. This judges the whole application, where
+# a middling score still means "worth tailoring" rather than "weak section", so
+# it needs a band between good and poor that the section scale has no use for.
+VERDICT_BANDS = (
+    (70, "Excellent match - your resume aligns strongly with this role."),
+    (
+        50,
+        "Good match - some targeted improvements could strengthen your application.",
+    ),
+    (30, "Partial match - significant tailoring is recommended."),
+)
+
+LOWEST_VERDICT = (
+    "Low match - consider whether this role fits your background or rewrite "
+    "substantially."
+)
+
+
+def describe_match(overall_pct: float) -> str:
+    """The headline verdict for an overall match percentage."""
+    for floor, verdict in VERDICT_BANDS:
+        if overall_pct >= floor:
+            return verdict
+    return LOWEST_VERDICT
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+KEYWORDS_EXTRACTED = 30
+
+
+@dataclass(frozen=True)
+class Analysis:
+    """Everything one resume-versus-job comparison produced."""
+
+    overall_pct: float
+    semantic_pct: float
+    keyword_overlap_pct: float
+    verdict: str
+    resume_keywords: list = field(default_factory=list)
+    job_keywords: list = field(default_factory=list)
+    matched_keywords: list = field(default_factory=list)
+    missing_keywords: list = field(default_factory=list)
+    section_scores: dict = field(default_factory=dict)
+    suggestions: list = field(default_factory=list)
+
+
+def analyze(
+    resume_text: str,
+    job_description: str,
+    pdf_path: Optional[str] = None,
+    *,
+    similarity_fn: Callable[[str, str], float],
+    read_pdf: Callable[[str], str] = read_pdf_text,
+) -> Analysis:
+    """Compare a resume against a job description.
+
+    *pdf_path* wins over *resume_text* when given.
+
+    Raises:
+        InputError: no resume, or no job description.
+        PdfReadError: *pdf_path* could not be read.
+    """
+    if pdf_path is not None:
+        resume_text = read_pdf(pdf_path)
+
+    if not resume_text or not resume_text.strip():
+        raise InputError("Please provide resume text or upload a PDF.")
+    if not job_description or not job_description.strip():
+        raise InputError("Please provide a job description.")
+
+    semantic = similarity_fn(resume_text, job_description)
+
+    resume_keywords, job_keywords = extract_keywords(
+        [resume_text, job_description], top_n=KEYWORDS_EXTRACTED
+    )
+    matched, missing = find_matching_and_missing_keywords(resume_text, job_keywords)
+    overlap = keyword_overlap(matched, job_keywords)
+
+    composite = composite_score(semantic, overlap)
+    overall_pct = round(composite * 100, 1)
+
+    sections = detect_sections(resume_text)
+    section_scores = {
+        name: analyze_section(
+            name, sections.get(name, ""), job_description, similarity_fn
+        )
+        for name in SCORED_SECTIONS
+    }
+
+    return Analysis(
+        overall_pct=overall_pct,
+        semantic_pct=round(semantic * 100, 1),
+        keyword_overlap_pct=round(overlap * 100, 1),
+        verdict=describe_match(overall_pct),
+        resume_keywords=resume_keywords,
+        job_keywords=job_keywords,
+        matched_keywords=matched,
+        missing_keywords=missing,
+        section_scores=section_scores,
+        suggestions=generate_suggestions(missing, section_scores, composite),
+    )

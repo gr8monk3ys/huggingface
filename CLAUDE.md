@@ -46,7 +46,9 @@ huggingface/
 
 - Models are fine-tuned from pretrained checkpoints (DistilBERT, BART-Large-CNN)
 - Spaces handle PDF input via PyMuPDF (fitz)
-- Text processing uses intelligent chunking that respects paragraph/sentence boundaries
+- `paper-summarizer-space` chunks long documents on paragraph boundaries, falling
+  back to sentence boundaries for an oversized paragraph. This is specific to that
+  Space, not a repo-wide pattern -- nothing else chunks text
 - Scoring systems use composite metrics (e.g., 60% semantic + 40% keyword overlap)
 
 ## Development

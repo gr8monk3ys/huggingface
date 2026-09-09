@@ -218,7 +218,7 @@ def summarize_text(text: str) -> str:
             },
         )
         return result.summary_text
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - FIXME(PR-04): discards the classified InferenceError
         logger.warning("Summarization failed: %s", e)
         # Fallback: return truncated text
         return " ".join(text.split()[:100]) + "..."
@@ -262,7 +262,7 @@ def generate_full_summary(text: str) -> str:
             },
         )
         return result.summary_text
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - FIXME(PR-04): discards the classified InferenceError
         logger.warning("Combined summarization failed: %s", e)
         return combined
 

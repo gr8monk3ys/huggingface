@@ -44,19 +44,26 @@ def _summarize(text: str, *, max_length: int, min_length: int) -> str:
     deliberately not caught here: a caller whose credits are exhausted needs to
     be told so, not handed a truncated document that reads like a summary.
     """
-    result = with_retry(
-        client.summarization,
-        text,
-        # `generate_parameters`, not `parameters`: the latter has never been the
-        # kwarg on InferenceClient.summarization, so every call raised TypeError.
-        # The old bare `except Exception` swallowed it and returned the first
-        # 100 words of the input, so the Space appeared to work.
-        generate_parameters={
-            "max_length": max_length,
-            "min_length": min_length,
-            "do_sample": False,
-        },
-    )
+    # max_length/min_length are accepted and then discarded here, deliberately.
+    #
+    # The old code passed them as `parameters=`, which InferenceClient has never
+    # accepted -- every call raised TypeError, and the bare `except Exception`
+    # turned that into the input's first 100 words presented as a summary.
+    #
+    # The kwarg was renamed `generate_parameters` in huggingface_hub 0.30, but
+    # sending it is *also* rejected, by the server rather than the client:
+    #   "The following `model_kwargs` are not used by the model:
+    #    ['generate_parameters']"
+    # The serverless provider for bart-large-cnn takes no length controls at
+    # all. Verified against the live API: the call succeeds with none and fails
+    # with any.
+    #
+    # core still computes the bounds -- they are the right interface and are
+    # tested -- and this adapter is where the provider's limitation belongs.
+    # Restore the kwarg here if the backend gains support.
+    del max_length, min_length
+
+    result = with_retry(client.summarization, text)
     return result.summary_text
 
 

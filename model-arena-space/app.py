@@ -1,208 +1,125 @@
-"""
-AI Model Arena - Compare AI model outputs side by side.
-Test prompts across multiple models and vote for the best response.
-"""
+"""AI Model Arena -- a Gradio front end over :mod:`core`.
 
-import random
-import time
+Owns the UI, the adapters, and the vote tally. The tally is mutable
+per-process state, which is why it lives here rather than in core: see
+docs/adr/0002-coarse-entry-point-for-space-core-modules.md.
+"""
 
 import gradio as gr
 
-from hf_client import InferenceError, friendly_error, make_client, with_retry
+from core import (
+    CATEGORIES,
+    MODELS,
+    Battle,
+    InputError,
+    battle,
+    example_prompt,
+    new_tally,
+    random_battle,
+    rank,
+    record_vote,
+)
+from hf_client import friendly_error, make_client, with_retry
 
-# ---------------------------------------------------------------------------
-# Model Configurations
-# ---------------------------------------------------------------------------
-
-MODELS = {
-    "Mistral-7B": {
-        "id": "mistralai/Mistral-7B-Instruct-v0.3",
-        "description": "Fast, efficient 7B parameter model from Mistral AI",
-        "strengths": "Speed, reasoning, code",
-    },
-    "Llama-3.1-8B": {
-        "id": "meta-llama/Llama-3.1-8B-Instruct",
-        "description": "Meta's latest open LLM with strong capabilities",
-        "strengths": "General knowledge, instruction following",
-    },
-    "Qwen2.5-7B": {
-        "id": "Qwen/Qwen2.5-7B-Instruct",
-        "description": "Alibaba's powerful multilingual model",
-        "strengths": "Multilingual, math, coding",
-    },
-    "Phi-3-mini": {
-        "id": "microsoft/Phi-3-mini-4k-instruct",
-        "description": "Microsoft's compact but capable model",
-        "strengths": "Efficiency, reasoning, small size",
-    },
-    "Gemma-2-9B": {
-        "id": "google/gemma-2-9b-it",
-        "description": "Google's instruction-tuned Gemma model",
-        "strengths": "Quality, safety, general tasks",
-    },
-    "Zephyr-7B": {
-        "id": "HuggingFaceH4/zephyr-7b-beta",
-        "description": "Fine-tuned Mistral with DPO alignment",
-        "strengths": "Helpfulness, alignment, chat",
-    },
-}
-
-CATEGORIES = {
-    "Creative Writing": [
-        "Write a haiku about artificial intelligence",
-        "Create a short story opening about a robot discovering emotions",
-        "Write a limerick about machine learning",
-        "Compose a brief poem about the future of technology",
-    ],
-    "Coding": [
-        "Write a Python function to check if a number is prime",
-        "Create a JavaScript function to reverse a string",
-        "Write a SQL query to find duplicate emails in a users table",
-        "Implement a simple stack data structure in Python",
-    ],
-    "Reasoning": [
-        "If all roses are flowers and some flowers fade quickly, can we conclude that some roses fade quickly?",
-        "A bat and ball cost $1.10 total. The bat costs $1 more than the ball. How much does the ball cost?",
-        "What comes next in the sequence: 2, 6, 12, 20, 30, ?",
-        "If it takes 5 machines 5 minutes to make 5 widgets, how long would it take 100 machines to make 100 widgets?",
-    ],
-    "Knowledge": [
-        "Explain quantum entanglement in simple terms",
-        "What are the main differences between TCP and UDP?",
-        "Briefly explain how transformers work in machine learning",
-        "What is the difference between machine learning and deep learning?",
-    ],
-    "Summarization": [
-        "Summarize the concept of blockchain technology in 2-3 sentences",
-        "Explain the main idea behind reinforcement learning briefly",
-        "Summarize what makes Python popular for data science",
-        "Briefly explain the concept of transfer learning",
-    ],
-}
-
-# ---------------------------------------------------------------------------
-# State Management
-# ---------------------------------------------------------------------------
-
-vote_counts = {model: {"wins": 0, "battles": 0} for model in MODELS}
-
-# ---------------------------------------------------------------------------
-# Core Functions
-# ---------------------------------------------------------------------------
+# Resets when the Space restarts, as the leaderboard footer says.
+vote_counts = new_tally()
 
 
-def get_model_response(model_id: str, prompt: str, max_tokens: int = 500) -> tuple:
-    """Get response from a model with timing."""
-    client = make_client(model_id)
+def _respond(model_id: str, prompt: str, *, max_tokens: int) -> str:
+    """Call one model, retrying transient failures.
 
-    start_time = time.time()
+    Raises with a user-ready message: core records str(exc) verbatim, so the
+    classification hf_client does must survive to this point.
+    """
     try:
         response = with_retry(
-            client.chat_completion,
+            client_for(model_id).chat_completion,
             messages=[{"role": "user", "content": prompt}],
             max_tokens=max_tokens,
             temperature=0.7,
         )
-        elapsed = time.time() - start_time
-        return response.choices[0].message.content, elapsed, None
-    except InferenceError as e:
-        return None, time.time() - start_time, str(e)
-    except Exception as e:  # noqa: BLE001 - surfaced to the UI
-        return None, time.time() - start_time, friendly_error(e)
+    except Exception as exc:  # noqa: BLE001 - re-raised with a classified message
+        raise RuntimeError(friendly_error(exc)) from exc
+    return response.choices[0].message.content
 
 
-def battle(prompt: str, model1_name: str, model2_name: str) -> tuple:
-    """Run a battle between two models."""
-    if not prompt.strip():
-        return "Please enter a prompt.", "", "", "", "", ("", "")
-
-    model1_id = MODELS[model1_name]["id"]
-    model2_id = MODELS[model2_name]["id"]
-
-    # Get responses
-    resp1, time1, err1 = get_model_response(model1_id, prompt)
-    resp2, time2, err2 = get_model_response(model2_id, prompt)
-
-    # Format responses
-    if err1:
-        output1 = f"**Error:** {err1}"
-    else:
-        output1 = f"{resp1}\n\n---\n*Response time: {time1:.2f}s*"
-
-    if err2:
-        output2 = f"**Error:** {err2}"
-    else:
-        output2 = f"{resp2}\n\n---\n*Response time: {time2:.2f}s*"
-
-    # Model info
-    info1 = f"**{model1_name}**\n{MODELS[model1_name]['description']}\n*Strengths: {MODELS[model1_name]['strengths']}*"
-    info2 = f"**{model2_name}**\n{MODELS[model2_name]['description']}\n*Strengths: {MODELS[model2_name]['strengths']}*"
-
-    # Return the battled model names so votes attribute to the models that
-    # actually produced these responses, not whatever the dropdowns show later.
-    return output1, output2, info1, info2, prompt, (model1_name, model2_name)
+def client_for(model_id: str):
+    """A client bound to one model. The arena switches models per battle."""
+    return make_client(model_id)
 
 
-def vote_model(winner: str, loser: str, prompt: str) -> str:
-    """Record a vote for the winning model."""
-    if not prompt or not winner or winner not in vote_counts:
+def _render_response(response) -> str:
+    if not response.ok:
+        return f"**Error:** {response.error}"
+    return f"{response.text}\n\n---\n*Response time: {response.seconds:.2f}s*"
+
+
+def _render_info(model_name: str) -> str:
+    model = MODELS[model_name]
+    return (
+        f"**{model_name}**\n{model['description']}\n*Strengths: {model['strengths']}*"
+    )
+
+
+def _render_battle(result: Battle) -> tuple:
+    """Unpack a Battle into the six outputs the UI binds."""
+    return (
+        _render_response(result.first),
+        _render_response(result.second),
+        _render_info(result.first.model_name),
+        _render_info(result.second.model_name),
+        result.prompt,
+        # Return the models that actually produced these responses, so a vote
+        # attributes to them rather than to whatever the dropdowns show later.
+        (result.first.model_name, result.second.model_name),
+    )
+
+
+def handle_battle(prompt: str, model1_name: str, model2_name: str) -> tuple:
+    """Gradio handler: run a battle, or report why not."""
+    try:
+        result = battle(prompt, model1_name, model2_name, respond_fn=_respond)
+    except InputError as exc:
+        return str(exc), "", "", "", "", ("", "")
+
+    return _render_battle(result)
+
+
+def handle_vote(winner: str, loser: str, prompt: str) -> str:
+    """Gradio handler: record a vote against the module-level tally."""
+    global vote_counts
+
+    if not prompt or not winner:
         return "Run a battle first before voting!"
 
-    vote_counts[winner]["wins"] += 1
-    vote_counts[winner]["battles"] += 1
-    if loser in vote_counts:
-        vote_counts[loser]["battles"] += 1
+    try:
+        vote_counts = record_vote(vote_counts, winner, loser)
+    except KeyError:
+        return "Run a battle first before voting!"
 
-    return f"Voted for **{winner}**! Total wins: {vote_counts[winner]['wins']}/{vote_counts[winner]['battles']}"
-
-
-def get_leaderboard() -> str:
-    """Generate leaderboard markdown."""
-    # Calculate win rates
-    rankings = []
-    for model, stats in vote_counts.items():
-        if stats["battles"] > 0:
-            win_rate = stats["wins"] / stats["battles"] * 100
-        else:
-            win_rate = 0
-        rankings.append((model, stats["wins"], stats["battles"], win_rate))
-
-    # Sort by win rate, then by total wins
-    rankings.sort(key=lambda x: (x[3], x[1]), reverse=True)
-
-    # Generate markdown table
-    md = "## Leaderboard\n\n"
-    md += "| Rank | Model | Wins | Battles | Win Rate |\n"
-    md += "|------|-------|------|---------|----------|\n"
-
-    for i, (model, wins, battles, rate) in enumerate(rankings, 1):
-        if battles > 0:
-            md += f"| {i} | {model} | {wins} | {battles} | {rate:.1f}% |\n"
-        else:
-            md += f"| {i} | {model} | 0 | 0 | - |\n"
-
-    md += "\n*Leaderboard resets when the Space restarts*"
-    return md
+    stats = vote_counts[winner]
+    return f"Voted for **{winner}**! Total wins: {stats['wins']}/{stats['battles']}"
 
 
-def random_battle() -> tuple:
-    """Set up a random battle."""
-    models = list(MODELS.keys())
-    model1 = random.choice(models)
-    model2 = random.choice([m for m in models if m != model1])
-    category = random.choice(list(CATEGORIES.keys()))
-    prompt = random.choice(CATEGORIES[category])
-    return model1, model2, prompt
+def handle_leaderboard() -> str:
+    """Gradio handler: render the current standings as a Markdown table."""
+    rows = [
+        "## Leaderboard",
+        "",
+        "| Rank | Model | Wins | Battles | Win Rate |",
+        "|------|-------|------|---------|----------|",
+    ]
+    for position, standing in enumerate(rank(vote_counts), 1):
+        rate = f"{standing.win_rate:.1f}%" if standing.battles else "-"
+        rows.append(
+            f"| {position} | {standing.model} | {standing.wins} "
+            f"| {standing.battles} | {rate} |"
+        )
+    rows.append("")
+    rows.append("*Leaderboard resets when the Space restarts*")
+    return "\n".join(rows)
 
 
-def get_example_prompt(category: str) -> str:
-    """Get a random prompt from a category."""
-    if category in CATEGORIES:
-        return random.choice(CATEGORIES[category])
-    return ""
-
-
-# ---------------------------------------------------------------------------
 # Gradio Interface
 # ---------------------------------------------------------------------------
 
@@ -268,7 +185,7 @@ with gr.Blocks(title="AI Model Arena", theme=gr.themes.Soft()) as demo:
     vote_result = gr.Markdown("")
 
     with gr.Accordion("📊 Leaderboard", open=False):
-        leaderboard_output = gr.Markdown(get_leaderboard())
+        leaderboard_output = gr.Markdown(handle_leaderboard())
         refresh_btn = gr.Button("🔄 Refresh Leaderboard")
 
     gr.Markdown("""
@@ -302,7 +219,7 @@ with gr.Blocks(title="AI Model Arena", theme=gr.themes.Soft()) as demo:
 
     # Event handlers
     battle_btn.click(
-        fn=battle,
+        fn=handle_battle,
         inputs=[prompt_input, model1_dropdown, model2_dropdown],
         outputs=[
             model1_output,
@@ -315,7 +232,7 @@ with gr.Blocks(title="AI Model Arena", theme=gr.themes.Soft()) as demo:
     )
 
     example_btn.click(
-        fn=get_example_prompt,
+        fn=example_prompt,
         inputs=[category_dropdown],
         outputs=[prompt_input],
     )
@@ -326,25 +243,25 @@ with gr.Blocks(title="AI Model Arena", theme=gr.themes.Soft()) as demo:
     )
 
     vote1_btn.click(
-        fn=lambda models, p: vote_model(models[0], models[1], p),
+        fn=lambda models, p: handle_vote(models[0], models[1], p),
         inputs=[current_models, current_prompt],
         outputs=[vote_result],
     ).then(
-        fn=get_leaderboard,
+        fn=handle_leaderboard,
         outputs=[leaderboard_output],
     )
 
     vote2_btn.click(
-        fn=lambda models, p: vote_model(models[1], models[0], p),
+        fn=lambda models, p: handle_vote(models[1], models[0], p),
         inputs=[current_models, current_prompt],
         outputs=[vote_result],
     ).then(
-        fn=get_leaderboard,
+        fn=handle_leaderboard,
         outputs=[leaderboard_output],
     )
 
     refresh_btn.click(
-        fn=get_leaderboard,
+        fn=handle_leaderboard,
         outputs=[leaderboard_output],
     )
 

@@ -191,3 +191,97 @@ def test_extract_keywords_ranks_distinctive_terms_first():
     got = core.extract_keywords(docs, top_n=5)
     assert "kubernetes" in got[0]
     assert "kubernetes" not in got[1]
+
+
+# ===========================================================================
+# PDF reading and the analyze() entry point
+# ===========================================================================
+JOB = "We need a Python engineer with experience in machine learning and SQL."
+RESUME = """Jane Doe
+
+Summary
+Python engineer with five years building machine learning systems.
+
+Experience
+Built SQL pipelines and trained models in production.
+
+Skills
+Python, SQL, machine learning, pandas
+"""
+
+
+def fixed_similarity(value):
+    return lambda a, b: value
+
+
+def test_analyze_rejects_an_empty_resume():
+    with pytest.raises(core.InputError, match="resume text"):
+        core.analyze("", JOB, similarity_fn=fixed_similarity(0.8))
+
+
+def test_analyze_rejects_an_empty_job_description():
+    with pytest.raises(core.InputError, match="job description"):
+        core.analyze(RESUME, "   ", similarity_fn=fixed_similarity(0.8))
+
+
+def test_analyze_reads_the_pdf_through_the_injected_reader():
+    pytest.importorskip("sklearn")
+    result = core.analyze(
+        "",
+        JOB,
+        pdf_path="/x.pdf",
+        similarity_fn=fixed_similarity(0.8),
+        read_pdf=lambda path: RESUME,
+    )
+    assert result.overall_pct > 0
+
+
+def test_pdf_read_errors_propagate_rather_than_becoming_a_ui_type():
+    """The old code raised gr.Error from here, welding the reader to gradio."""
+
+    def unreadable(path):
+        raise core.PdfReadError("scanned document")
+
+    with pytest.raises(core.PdfReadError, match="scanned"):
+        core.analyze(
+            "",
+            JOB,
+            pdf_path="/scan.pdf",
+            similarity_fn=fixed_similarity(0.8),
+            read_pdf=unreadable,
+        )
+
+
+def test_analysis_reports_the_composite_of_semantic_and_keyword_scores():
+    pytest.importorskip("sklearn")
+    result = core.analyze(RESUME, JOB, similarity_fn=fixed_similarity(1.0))
+    expected = core.composite_score(1.0, result.keyword_overlap_pct / 100) * 100
+    assert result.overall_pct == pytest.approx(expected, abs=0.1)
+    assert result.semantic_pct == 100.0
+
+
+def test_analysis_scores_every_scored_section():
+    pytest.importorskip("sklearn")
+    result = core.analyze(RESUME, JOB, similarity_fn=fixed_similarity(0.7))
+    assert set(result.section_scores) == set(core.SCORED_SECTIONS)
+
+
+@pytest.mark.parametrize(
+    "pct, fragment",
+    [
+        (95, "Excellent"),
+        (70, "Excellent"),
+        (60, "Good"),
+        (50, "Good"),
+        (40, "Partial"),
+        (30, "Partial"),
+        (10, "Low"),
+    ],
+)
+def test_verdict_bands(pct, fragment):
+    assert fragment in core.describe_match(pct)
+
+
+def test_overall_verdict_bands_differ_from_section_alignment_bands():
+    """Not an oversight: one judges a whole application, the other one section."""
+    assert core.describe_match(60) != core.describe_alignment(0.60)

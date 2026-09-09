@@ -1,136 +1,65 @@
-"""
-Style Mixer - Blend artistic styles using AI.
-Create unique art by mixing different visual styles.
-"""
+"""Style Mixer -- a Gradio front end over :mod:`core`.
 
-import random
+Owns the UI and the adapters: builds the Inference client, wraps it as the
+``generate_image`` core expects, and renders the returned StyleMix.
+"""
 
 import gradio as gr
 
+from core import (
+    ART_STYLES,
+    SUBJECTS,
+    InputError,
+    StyleMix,
+    mix_styles,
+    random_mix,
+)
 from hf_client import InferenceError, make_client, with_retry
-
-# ---------------------------------------------------------------------------
-# Style Definitions
-# ---------------------------------------------------------------------------
-
-ART_STYLES = {
-    "Van Gogh": "swirling brushstrokes, vibrant colors, post-impressionist, starry night style, thick impasto paint",
-    "Picasso Cubism": "geometric shapes, fragmented forms, multiple perspectives, cubist, angular",
-    "Monet Impressionism": "soft brushstrokes, light effects, water lilies style, dreamy, pastel colors",
-    "Japanese Ukiyo-e": "flat colors, bold outlines, wave patterns, woodblock print style, Mount Fuji",
-    "Art Deco": "geometric patterns, gold accents, 1920s glamour, symmetrical, elegant lines",
-    "Cyberpunk": "neon lights, futuristic city, rain-slicked streets, holographic, dystopian",
-    "Studio Ghibli": "anime style, whimsical, nature spirits, soft colors, Miyazaki inspired",
-    "Baroque": "dramatic lighting, rich colors, ornate details, chiaroscuro, Caravaggio style",
-    "Pop Art": "bold colors, comic book style, Ben-Day dots, Warhol inspired, high contrast",
-    "Watercolor": "soft edges, transparent layers, flowing pigments, wet-on-wet technique",
-    "Pixel Art": "8-bit style, retro gaming, blocky pixels, limited color palette, nostalgic",
-    "Steampunk": "Victorian era, brass gears, clockwork, industrial, sepia tones",
-    "Vaporwave": "80s aesthetic, pink and cyan, greek statues, sunset gradients, retro tech",
-    "Gothic": "dark atmosphere, cathedral architecture, ravens, moonlight, dramatic shadows",
-    "Minimalist": "clean lines, simple shapes, negative space, monochromatic, zen-like",
-}
-
-SUBJECTS = [
-    "a majestic lion",
-    "a serene mountain landscape",
-    "a bustling city street",
-    "a mysterious forest",
-    "a peaceful ocean sunset",
-    "a cozy coffee shop",
-    "an ancient temple",
-    "a futuristic spacecraft",
-    "a beautiful garden",
-    "a magical castle",
-]
-
-# ---------------------------------------------------------------------------
-# Initialize Client
-# ---------------------------------------------------------------------------
 
 IMAGE_MODEL = "black-forest-labs/FLUX.1-schnell"
 client = make_client()
 
-# ---------------------------------------------------------------------------
-# Core Functions
-# ---------------------------------------------------------------------------
+
+def _generate_image(prompt: str):
+    """Call the Inference API, retrying transient failures."""
+    return with_retry(client.text_to_image, prompt, model=IMAGE_MODEL)
 
 
-def mix_styles(
-    style1: str, style2: str, blend_ratio: float, subject: str, custom_subject: str
-) -> tuple:
-    """Generate an image blending two art styles."""
+def _render(mix: StyleMix) -> str:
+    """Format a StyleMix as the Markdown shown beside the image."""
+    return f"""## Style Mix Complete!
 
-    # Use custom subject if provided
-    final_subject = custom_subject.strip() if custom_subject.strip() else subject
-
-    if not final_subject:
-        return None, "Please select or enter a subject."
-
-    # Get style descriptions
-    style1_desc = ART_STYLES.get(style1, style1)
-    style2_desc = ART_STYLES.get(style2, style2)
-
-    # Create the blended prompt. Weighting is applied in three discrete bands,
-    # so the displayed percentages reflect the band actually used rather than
-    # the raw slider value (which would diverge from the real prompt weights).
-    if blend_ratio <= 0.3:
-        blend_desc = f"primarily in {style1} style with subtle hints of {style2}"
-        style_weight = f"({style1_desc}:1.3), ({style2_desc}:0.5)"
-        pct1, pct2 = 70, 30
-    elif blend_ratio >= 0.7:
-        blend_desc = f"primarily in {style2} style with subtle hints of {style1}"
-        style_weight = f"({style1_desc}:0.5), ({style2_desc}:1.3)"
-        pct1, pct2 = 30, 70
-    else:
-        blend_desc = f"harmoniously blending {style1} and {style2} styles"
-        style_weight = f"({style1_desc}:1.0), ({style2_desc}:1.0)"
-        pct1, pct2 = 50, 50
-
-    # Construct the prompt
-    prompt = f"""A stunning artistic rendering of {final_subject}, {blend_desc}.
-
-Style fusion: {style_weight}
-
-The artwork masterfully combines elements from both styles, creating a unique and visually striking piece.
-High quality, detailed, professional artwork, museum quality."""
-
-    try:
-        image = with_retry(client.text_to_image, prompt, model=IMAGE_MODEL)
-    except InferenceError as e:
-        return None, str(e)
-
-    description = f"""## Style Mix Complete!
-
-**Subject:** {final_subject}
+**Subject:** {mix.subject}
 
 **Style Blend:**
-- **{style1}** ({pct1}%): {style1_desc}
-- **{style2}** ({pct2}%): {style2_desc}
+- **{mix.style1}** ({mix.percent1}%): {mix.style1_description}
+- **{mix.style2}** ({mix.percent2}%): {mix.style2_description}
 
 **Prompt Used:**
 ```
-{prompt}
+{mix.prompt}
 ```
 
 *Try adjusting the blend ratio or mixing different styles!*
 """
-    return image, description
 
 
-def random_mix():
-    """Generate random style combination."""
-    styles = list(ART_STYLES.keys())
-    style1 = random.choice(styles)
-    style2 = random.choice([s for s in styles if s != style1])
-    subject = random.choice(SUBJECTS)
-    ratio = random.uniform(0.3, 0.7)
-    return style1, style2, ratio, subject, ""
+def handle_mix(style1, style2, blend_ratio, subject, custom_subject) -> tuple:
+    """Gradio handler: generate the blend, or report why not."""
+    try:
+        mix = mix_styles(
+            style1,
+            style2,
+            blend_ratio,
+            subject,
+            custom_subject,
+            generate_image=_generate_image,
+        )
+    except (InputError, InferenceError) as exc:
+        return None, str(exc)
 
+    return mix.image, _render(mix)
 
-# ---------------------------------------------------------------------------
-# Gradio Interface
-# ---------------------------------------------------------------------------
 
 EXAMPLES = [
     ["Van Gogh", "Cyberpunk", 0.5, "a bustling city street", ""],
@@ -206,13 +135,13 @@ with gr.Blocks(title="Style Mixer", theme=gr.themes.Soft()) as demo:
             custom_subject,
         ],
         outputs=[output_image, output_description],
-        fn=mix_styles,
+        fn=handle_mix,
         cache_examples=False,
     )
 
     # Event handlers
     generate_btn.click(
-        fn=mix_styles,
+        fn=handle_mix,
         inputs=[
             style1_dropdown,
             style2_dropdown,

@@ -22,7 +22,7 @@ from typing import Optional, Protocol
 # ---------------------------------------------------------------------------
 MODELS = {
     "Mistral-7B": {
-        "id": "mistralai/Mistral-7B-Instruct-v0.3",
+        "id": "mistralai/Mistral-7B-Instruct-v0.2",
         "description": "Fast, efficient 7B parameter model from Mistral AI",
         "strengths": "Speed, reasoning, code",
     },

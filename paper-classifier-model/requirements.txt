@@ -4,4 +4,7 @@ torch>=2.1.0,<3.0.0
 scikit-learn>=1.3.0,<2.0.0
 accelerate>=0.25.0,<2.0.0
 evaluate>=0.4.0,<1.0.0
-huggingface_hub>=0.20.0,<1.0.0
+# transformers 5.x requires huggingface_hub>=1.0. The v5 migration in
+# 60a308b left this pin at <1.0.0, which made this file unsatisfiable:
+# `uv pip install -r requirements.txt` failed outright.
+huggingface_hub>=1.0.0,<2.0.0

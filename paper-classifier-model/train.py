@@ -11,6 +11,7 @@ License: MIT
 """
 
 import argparse
+import math
 import logging
 import sys
 from pathlib import Path
@@ -353,6 +354,21 @@ def tokenize_dataset(
     return tokenized
 
 
+def warmup_steps_for(
+    n_train: int, batch_size: int, grad_accum: int, epochs: float, ratio: float
+) -> int:
+    """Convert a warm-up *ratio* into a step count.
+
+    transformers 5.x removed ``warmup_ratio`` from TrainingArguments and kept
+    only ``warmup_steps``; the v5 migration in 60a308b bumped the version
+    without updating the call, so this script raised TypeError before reaching
+    a single training step. The ratio stays the user-facing knob because it is
+    the one that survives a change of batch size.
+    """
+    steps_per_epoch = math.ceil(n_train / max(batch_size * grad_accum, 1))
+    return round(ratio * steps_per_epoch * epochs)
+
+
 def build_compute_metrics_fn():
     """Return a ``compute_metrics`` callable for the HF Trainer.
 
@@ -372,12 +388,13 @@ def build_compute_metrics_fn():
         predictions = np.argmax(logits, axis=-1)
         results = {}
         results.update(acc_metric.compute(predictions=predictions, references=labels))
-        results.update(
-            f1_metric.compute(
-                predictions=predictions, references=labels, average="weighted"
-            )
-        )
-        # Macro F1 surfaces minority-class performance that weighted F1 hides.
+        # Both averages are reported. Weighted is the flattering headline
+        # number; macro weights a rare category as heavily as a common one and
+        # is what model selection uses, so a model that ignores a small class
+        # cannot win on it.
+        results["f1_weighted"] = f1_metric.compute(
+            predictions=predictions, references=labels, average="weighted"
+        )["f1"]
         results["f1_macro"] = f1_metric.compute(
             predictions=predictions, references=labels, average="macro"
         )["f1"]
@@ -451,7 +468,13 @@ def main() -> None:
         per_device_eval_batch_size=args.per_device_eval_batch_size,
         learning_rate=args.learning_rate,
         weight_decay=args.weight_decay,
-        warmup_ratio=args.warmup_ratio,
+        warmup_steps=warmup_steps_for(
+            len(tokenized_dataset["train"]),
+            args.per_device_train_batch_size,
+            getattr(args, "gradient_accumulation_steps", 1),
+            args.num_train_epochs,
+            args.warmup_ratio,
+        ),
         lr_scheduler_type="linear",
         eval_strategy="epoch",
         save_strategy="epoch",
@@ -459,7 +482,7 @@ def main() -> None:
         logging_steps=50,
         save_total_limit=2,
         load_best_model_at_end=True,
-        metric_for_best_model="f1",
+        metric_for_best_model="f1_macro",
         greater_is_better=True,
         fp16=args.fp16 and torch.cuda.is_available(),
         report_to="none",

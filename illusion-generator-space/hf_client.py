@@ -1,5 +1,10 @@
 """Helpers for talking to the HuggingFace Inference API.
 
+VENDORED MODULE -- a byte-identical copy lives in each Space folder that needs
+it, because a Space is uploaded as a flat directory and cannot import from
+outside itself. Edit every copy in the same commit; tests/test_vendored.py
+fails otherwise. See docs/adr/0001-vendoring-is-the-only-sharing-mechanism.md.
+
 Centralises the three things every Space here needs and previously got wrong:
 
 * **Authentication** -- reads ``HF_TOKEN`` from the environment. The serverless

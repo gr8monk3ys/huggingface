@@ -19,8 +19,16 @@ if _helper_dir not in sys.path:
 
 
 def load_local_module(module_name: str, relative_path: str):
-    """Import a module from a file path under a unique *module_name*."""
+    """Import a module from a file path under a unique *module_name*.
+
+    The module is registered in ``sys.modules`` before it is executed. That is
+    not bookkeeping: a module using ``from __future__ import annotations`` makes
+    its dataclass field types strings, and ``dataclasses`` resolves those via
+    ``sys.modules[cls.__module__]``. Without the entry that lookup returns None
+    and the class fails to build.
+    """
     spec = importlib.util.spec_from_file_location(module_name, ROOT / relative_path)
     module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
     spec.loader.exec_module(module)
     return module

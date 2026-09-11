@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/gr8monk3ys/huggingface/compare/v0.1.0...v0.2.0) (2026-09-11)
+
+
+### Features
+
+* **dataset-explorer:** rebuild as a static Space, and fix every broken preset ([#31](https://github.com/gr8monk3ys/huggingface/issues/31)) ([dc8e8db](https://github.com/gr8monk3ys/huggingface/commit/dc8e8dbf4693d1f405859db778d3b81a1bcb2bd8))
+
 ## 0.1.0 (2026-09-09)
 
 

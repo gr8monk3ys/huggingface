@@ -13,6 +13,8 @@ name: tests
 # PR and cost the ability to merge them at all.
 
 on:
+  push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 

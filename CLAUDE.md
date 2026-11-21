@@ -112,8 +112,8 @@ GitHub Issues on `gr8monk3ys/huggingface`, via the `gh` CLI. See `docs/agents/is
 
 ### Triage labels
 
-The five canonical roles, each label string equal to its name. See `docs/agents/triage-labels.md`.
+The five canonical roles, label string equal to role name. See `docs/agents/triage-labels.md`.
 
 ### Domain docs
 
-Single-context: one root `CONTEXT.md` plus `docs/adr/`. See `docs/agents/domain.md`.
+Single-context: `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.

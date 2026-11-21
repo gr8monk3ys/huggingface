@@ -37,7 +37,7 @@ differ, and each is correct for its own job. They share a word.
 
 The two stay separate. No shared module, no unified label set.
 
-`CONTEXT.md` names them distinctly — **scored section** for the analyzer's five,
+`GLOSSARY.md` names them distinctly — **scored section** for the analyzer's five,
 **section label** for the classifier's eight — so the collision stops being
 invisible in prose and code review.
 
@@ -45,7 +45,7 @@ invisible in prose and code review.
 
 A future architecture review will notice the shared word again and propose
 merging them; that is exactly how this ADR came to be written. This document is
-the answer, and the distinct names in `CONTEXT.md` are the cheaper first line of
+the answer, and the distinct names in `GLOSSARY.md` are the cheaper first line of
 defence.
 
 Unifying them remains a legitimate *product* decision. Adopting the classifier's
